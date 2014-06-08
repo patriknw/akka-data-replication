@@ -83,6 +83,11 @@ More detailed documentation can be found in the
 [ScalaDoc](http://dl.bintray.com/patriknw/maven/com/github/patriknw/akka-datareplication_2.10/0.1/#akka-datareplication_2.10-0.1-javadoc.jar)
 of `Replicator` and linked classes.
 
+Two other examples:
+
+- [VotingService](https://github.com/patriknw/akka-datareplication/blob/v0.1/src/multi-jvm/scala/akka/contrib/datareplication/VotingContestSpec.scala#L30)
+- [ShoppingCart](https://github.com/patriknw/akka-datareplication/blob/v0.1/src/multi-jvm/scala/akka/contrib/datareplication/ReplicatedShoppingCartSpec.scala#L31)
+
 Dependency
 ----------
 
