@@ -75,8 +75,13 @@ A short example of how to use it:
       override def postStop(): Unit = tickTask.cancel()
     
     }
+    
+The full source code for this sample is in 
+[DataBot.scala](https://github.com/patriknw/akka-datareplication/blob/v0.1/src/test/scala/akka/contrib/datareplication/sample/DataBot.scala).   
 
-More detailed documentation can be found in the ScalaDoc of `Replicator` and linked classes.
+More detailed documentation can be found in the
+[ScalaDoc](http://dl.bintray.com/patriknw/maven/com/github/patriknw/akka-datareplication_2.10/0.1/#akka-datareplication_2.10-0.1-javadoc.jar)
+of `Replicator` and linked classes.
 
 Dependency
 ----------
