@@ -3,10 +3,9 @@
  */
 package akka.contrib.datareplication;
 
-import akka.contrib.datareplication.UniqueAddress;
+import akka.cluster.UniqueAddress;
 
-public class JavaImplOfReplicatedData extends AbstractReplicatedData implements
-    RemovedNodePruning {
+public class JavaImplOfReplicatedData extends AbstractReplicatedData implements RemovedNodePruning {
 
   @Override
   public JavaImplOfReplicatedData merge(ReplicatedData other) {
@@ -19,8 +18,7 @@ public class JavaImplOfReplicatedData extends AbstractReplicatedData implements
   }
 
   @Override
-  public JavaImplOfReplicatedData prune(UniqueAddress removedNode,
-      UniqueAddress collapseInto) {
+  public JavaImplOfReplicatedData prune(UniqueAddress removedNode, UniqueAddress collapseInto) {
     return this;
   }
 

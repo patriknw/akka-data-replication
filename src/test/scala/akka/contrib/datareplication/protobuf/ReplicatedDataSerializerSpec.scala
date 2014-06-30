@@ -21,9 +21,9 @@ import akka.contrib.datareplication.PNCounter
 import akka.contrib.datareplication.PNCounterMap
 import akka.contrib.datareplication.Replicator._
 import akka.contrib.datareplication.Replicator.Internal._
-import akka.contrib.datareplication.UniqueAddress
 import akka.contrib.datareplication.VectorClock
 import akka.testkit.TestKit
+import akka.cluster.UniqueAddress
 
 class ReplicatedDataSerializerSpec extends TestKit(ActorSystem("ReplicatedDataSerializerSpec"))
   with WordSpecLike with Matchers with BeforeAndAfterAll {

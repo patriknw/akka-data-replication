@@ -77,28 +77,28 @@ A short example of how to use it:
     }
     
 The full source code for this sample is in 
-[DataBot.scala](https://github.com/patriknw/akka-datareplication/blob/v0.1/src/test/scala/akka/contrib/datareplication/sample/DataBot.scala).   
+[DataBot.scala](https://github.com/patriknw/akka-datareplication/blob/v0.2/src/test/scala/akka/contrib/datareplication/sample/DataBot.scala).   
 
 More detailed documentation can be found in the
-[ScalaDoc](http://dl.bintray.com/patriknw/maven/com/github/patriknw/akka-datareplication_2.10/0.1/#akka-datareplication_2.10-0.1-javadoc.jar)
+[ScalaDoc](http://dl.bintray.com/patriknw/maven/com/github/patriknw/akka-datareplication_2.10/0.2/#akka-datareplication_2.10-0.2-javadoc.jar)
 of `Replicator` and linked classes.
 
 Two other examples:
 
-- [VotingService](https://github.com/patriknw/akka-datareplication/blob/v0.1/src/multi-jvm/scala/akka/contrib/datareplication/VotingContestSpec.scala#L30)
-- [ShoppingCart](https://github.com/patriknw/akka-datareplication/blob/v0.1/src/multi-jvm/scala/akka/contrib/datareplication/ReplicatedShoppingCartSpec.scala#L31)
+- [VotingService](https://github.com/patriknw/akka-datareplication/blob/v0.2/src/multi-jvm/scala/akka/contrib/datareplication/VotingContestSpec.scala#L30)
+- [ShoppingCart](https://github.com/patriknw/akka-datareplication/blob/v0.2/src/multi-jvm/scala/akka/contrib/datareplication/ReplicatedShoppingCartSpec.scala#L31)
 
 Dependency
 ----------
 
-Latest version of `akka-datareplication` is `0.1`. This version depends on Akka 2.3.3 and is
+Latest version of `akka-datareplication` is `0.2`. This version depends on Akka 2.3.4 and is
 cross-built against Scala 2.10.4 and 2.11.0.
 
 Add the following lines to your `build.sbt` file:
 
     resolvers += "patriknw at bintray" at "http://dl.bintray.com/patriknw/maven"
 
-    libraryDependencies += "com.github.patriknw" %% "akka-datareplication" % "0.1"
+    libraryDependencies += "com.github.patriknw" %% "akka-datareplication" % "0.2"
 
 More Resources
 --------------

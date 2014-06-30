@@ -1,7 +1,7 @@
 import com.typesafe.sbt.SbtMultiJvm
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
-val akkaVersion = "2.3.3"
+val akkaVersion = "2.3.4"
 
 val project = Project(
   id = "akka-datareplication",
@@ -10,7 +10,7 @@ val project = Project(
     organization := "com.github.patriknw",
     name := "akka-datareplication",
     licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0")),
-    version := "0.2-SNAPSHOT",
+    version := "0.2",
     scalaVersion := "2.10.4",
     crossScalaVersions := Seq("2.10.4", "2.11.1"),
     libraryDependencies ++= Seq(

@@ -72,7 +72,7 @@ class ReplicatorPruningSpec extends MultiNodeSpec(ReplicatorPruningSpec) with ST
           case MemberUp(m) if m.address == node(third).address ⇒ true
           case _ ⇒ false
         }.asInstanceOf[MemberUp].member
-        UniqueAddressAccess.memberUniqueAddress(member)
+        member.uniqueAddress
       }
 
       val c3 = GCounter() :+ 3

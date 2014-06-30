@@ -13,10 +13,10 @@ import com.google.protobuf.MessageLite
 import akka.actor.ActorRef
 import akka.actor.Address
 import akka.actor.ExtendedActorSystem
-import akka.contrib.datareplication.UniqueAddress
 import akka.contrib.datareplication.protobuf.msg.{ ReplicatorMessages ⇒ dm }
 import akka.serialization.SerializationExtension
 import akka.serialization.JSerializer
+import akka.cluster.UniqueAddress
 
 /**
  * Some useful serialization helper methods.

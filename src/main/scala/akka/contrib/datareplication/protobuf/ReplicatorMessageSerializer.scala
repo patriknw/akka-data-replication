@@ -10,7 +10,6 @@ import scala.concurrent.duration.Duration
 import com.google.protobuf.ByteString
 import akka.actor.ExtendedActorSystem
 import akka.cluster.Member
-import akka.contrib.datareplication.UniqueAddress
 import akka.contrib.datareplication.PruningState
 import akka.contrib.datareplication.ReplicatedData
 import akka.contrib.datareplication.Replicator._
@@ -19,6 +18,7 @@ import akka.contrib.datareplication.protobuf.msg.{ ReplicatorMessages ⇒ dm }
 import akka.serialization.Serialization
 import akka.serialization.Serializer
 import akka.util.{ ByteString ⇒ AkkaByteString }
+import akka.cluster.UniqueAddress
 
 /**
  * Protobuf serializer of ReplicatorMessage messages.

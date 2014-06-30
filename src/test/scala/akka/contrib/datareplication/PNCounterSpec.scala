@@ -7,6 +7,7 @@ package akka.contrib.datareplication
 import org.scalatest.WordSpec
 import org.scalatest.Matchers
 import akka.actor.Address
+import akka.cluster.UniqueAddress
 
 class PNCounterSpec extends WordSpec with Matchers {
   val node1 = UniqueAddress(Address("akka.tcp", "Sys", "localhost", 2551), 1)

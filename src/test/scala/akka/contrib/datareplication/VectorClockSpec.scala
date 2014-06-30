@@ -9,6 +9,7 @@ import org.scalatest.Matchers
 import org.scalatest.WordSpecLike
 import akka.actor.ActorSystem
 import akka.actor.Address
+import akka.cluster.UniqueAddress
 import akka.testkit.TestKit
 
 class VectorClockSpec extends TestKit(ActorSystem("VectorClockSpec"))

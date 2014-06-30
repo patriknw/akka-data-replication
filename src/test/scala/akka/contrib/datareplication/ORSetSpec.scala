@@ -6,8 +6,9 @@ package akka.contrib.datareplication
 
 import org.scalatest.WordSpec
 import org.scalatest.Matchers
-import akka.actor.Address
 import scala.collection.immutable.TreeMap
+import akka.actor.Address
+import akka.cluster.UniqueAddress
 
 class ORSetSpec extends WordSpec with Matchers {
 

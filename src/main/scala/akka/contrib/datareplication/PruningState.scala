@@ -3,8 +3,9 @@
  */
 package akka.contrib.datareplication
 
-import akka.cluster.Member
 import akka.actor.Address
+import akka.cluster.Member
+import akka.cluster.UniqueAddress
 
 /**
  * INTERNAL API

@@ -4,6 +4,7 @@
 package akka.contrib.datareplication
 
 import akka.cluster.Cluster
+import akka.cluster.UniqueAddress
 
 object LWWRegister {
 
@@ -14,13 +15,13 @@ object LWWRegister {
     new LWWRegister(node, initialValue, defaultClock(), defaultClock)
 
   def apply(node: Cluster, initialValue: Any): LWWRegister =
-    apply(UniqueAddressAccess.selfUniqueAddress(node), initialValue)
+    apply(node.selfUniqueAddress, initialValue)
 
   /**
    * Java API
    */
   def create(node: Cluster, initialValue: Any): LWWRegister =
-    apply(UniqueAddressAccess.selfUniqueAddress(node), initialValue)
+    apply(node.selfUniqueAddress, initialValue)
 
   def unapply(value: Any): Option[Any] = value match {
     case r: LWWRegister ⇒ Some(r.value)
@@ -66,7 +67,7 @@ case class LWWRegister(
   def getValue(): AnyRef = state.asInstanceOf[AnyRef]
 
   def withValue(node: Cluster, value: Any): LWWRegister =
-    withValue(UniqueAddressAccess.selfUniqueAddress(node), value)
+    withValue(node.selfUniqueAddress, value)
 
   def updatedBy: UniqueAddress = node
 

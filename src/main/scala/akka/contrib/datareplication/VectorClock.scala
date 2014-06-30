@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicLong
 import scala.collection.immutable.TreeMap
 import scala.annotation.tailrec
 import akka.cluster.Cluster
+import akka.cluster.UniqueAddress
 
 /**
  * VectorClock module with helper classes and methods.
@@ -98,7 +99,7 @@ final case class VectorClock(
   /**
    * Increment the version for the node passed as argument. Returns a new VectorClock.
    */
-  def increment(node: Cluster): VectorClock = increment(UniqueAddressAccess.selfUniqueAddress(node))
+  def increment(node: Cluster): VectorClock = increment(node.selfUniqueAddress)
 
   /**
    * INTERNAL API

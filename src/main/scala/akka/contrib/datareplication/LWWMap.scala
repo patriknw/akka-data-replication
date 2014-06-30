@@ -4,6 +4,7 @@
 package akka.contrib.datareplication
 
 import akka.cluster.Cluster
+import akka.cluster.UniqueAddress
 
 object LWWMap {
   val empty: LWWMap = new LWWMap
@@ -51,7 +52,7 @@ case class LWWMap(
    * Adds an entry to the map
    */
   def put(node: Cluster, key: String, value: Any): LWWMap =
-    put(UniqueAddressAccess.selfUniqueAddress(node), key, value)
+    put(node.selfUniqueAddress, key, value)
 
   /**
    * INTERNAL API

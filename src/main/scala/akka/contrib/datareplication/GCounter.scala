@@ -4,6 +4,7 @@
 package akka.contrib.datareplication
 
 import akka.cluster.Cluster
+import akka.cluster.UniqueAddress
 
 object GCounter {
   val empty: GCounter = new GCounter
@@ -47,7 +48,7 @@ case class GCounter(
    * The delta must be zero or positive.
    */
   def increment(node: Cluster, delta: Long = 1): GCounter =
-    increment(UniqueAddressAccess.selfUniqueAddress(node), delta)
+    increment(node.selfUniqueAddress, delta)
 
   /**
    * INTERNAL API

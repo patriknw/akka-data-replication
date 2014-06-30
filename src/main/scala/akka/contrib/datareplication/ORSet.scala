@@ -4,6 +4,7 @@
 package akka.contrib.datareplication
 
 import akka.cluster.Cluster
+import akka.cluster.UniqueAddress
 import scala.annotation.tailrec
 import scala.collection.immutable.TreeMap
 
@@ -153,7 +154,7 @@ case class ORSet(
   /**
    * Adds an element to the set
    */
-  def add(node: Cluster, element: Any): ORSet = add(UniqueAddressAccess.selfUniqueAddress(node), element)
+  def add(node: Cluster, element: Any): ORSet = add(node.selfUniqueAddress, element)
 
   /**
    * INTERNAL API
@@ -172,7 +173,7 @@ case class ORSet(
   /**
    * Removes an element from the set.
    */
-  def remove(node: Cluster, element: Any): ORSet = remove(UniqueAddressAccess.selfUniqueAddress(node), element)
+  def remove(node: Cluster, element: Any): ORSet = remove(node.selfUniqueAddress, element)
 
   /**
    * INTERNAL API

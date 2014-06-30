@@ -18,6 +18,7 @@ import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
 import akka.cluster.Member
 import akka.cluster.MemberStatus
+import akka.cluster.UniqueAddress
 import scala.util.Try
 import scala.util.Success
 import scala.util.Failure
@@ -502,7 +503,7 @@ class Replicator(
 
   val cluster = Cluster(context.system)
   val selfAddress = cluster.selfAddress
-  val selfUniqueAddress = UniqueAddressAccess.selfUniqueAddress(cluster)
+  val selfUniqueAddress = cluster.selfUniqueAddress
 
   require(!cluster.isTerminated, "Cluster node must not be terminated")
   require(role.forall(cluster.selfRoles.contains),
@@ -807,7 +808,7 @@ class Replicator(
       context stop self
     else if (matchingRole(m)) {
       nodes -= m.address
-      removedNodes = removedNodes.updated(UniqueAddressAccess.memberUniqueAddress(m), allReachableClockTime)
+      removedNodes = removedNodes.updated(m.uniqueAddress, allReachableClockTime)
       unreachable -= m.address
     }
   }

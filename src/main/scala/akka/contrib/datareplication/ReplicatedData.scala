@@ -3,6 +3,8 @@
  */
 package akka.contrib.datareplication
 
+import akka.cluster.UniqueAddress
+
 /**
  * Interface for implementing a state based convergent
  * replicated data type (CvRDT).

@@ -4,6 +4,7 @@
 package akka.contrib.datareplication
 
 import akka.cluster.Cluster
+import akka.cluster.UniqueAddress
 
 object PNCounter {
   val empty: PNCounter = new PNCounter(GCounter.empty, GCounter.empty)
@@ -47,7 +48,7 @@ case class PNCounter(
    * If the delta is negative then it will decrement instead of increment.
    */
   def increment(node: Cluster, delta: Long = 1): PNCounter =
-    change(UniqueAddressAccess.selfUniqueAddress(node), delta)
+    change(node.selfUniqueAddress, delta)
 
   /**
    * Decrement the counter with the delta specified.
@@ -60,7 +61,7 @@ case class PNCounter(
    * If the delta is negative then it will increment instead of decrement.
    */
   def decrement(node: Cluster, delta: Long = 1): PNCounter =
-    change(UniqueAddressAccess.selfUniqueAddress(node), -delta)
+    change(node.selfUniqueAddress, -delta)
 
   private[akka] def increment(key: UniqueAddress, delta: Long): PNCounter = change(key, delta)
   private[akka] def increment(key: UniqueAddress): PNCounter = increment(key, 1)

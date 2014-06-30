@@ -18,9 +18,9 @@ import akka.contrib.datareplication.PruningState.PruningInitialized
 import akka.contrib.datareplication.PruningState.PruningPerformed
 import akka.contrib.datareplication.Replicator._
 import akka.contrib.datareplication.Replicator.Internal._
-import akka.contrib.datareplication.UniqueAddress
 import akka.testkit.TestKit
 import akka.util.ByteString
+import akka.cluster.UniqueAddress
 
 class ReplicatorMessageSerializerSpec extends TestKit(ActorSystem("ReplicatorMessageSerializerSpec"))
   with WordSpecLike with Matchers with BeforeAndAfterAll {

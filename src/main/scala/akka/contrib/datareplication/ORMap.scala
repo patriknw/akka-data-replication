@@ -5,6 +5,7 @@ package akka.contrib.datareplication
 
 import scala.collection.breakOut
 import akka.cluster.Cluster
+import akka.cluster.UniqueAddress
 
 object ORMap {
   val empty: ORMap = new ORMap
@@ -60,7 +61,7 @@ case class ORMap(
   /**
    * Adds an entry to the map
    */
-  def put(node: Cluster, key: String, value: ReplicatedData): ORMap = put(UniqueAddressAccess.selfUniqueAddress(node), key, value)
+  def put(node: Cluster, key: String, value: ReplicatedData): ORMap = put(node.selfUniqueAddress, key, value)
 
   /**
    * INTERNAL API
@@ -76,7 +77,7 @@ case class ORMap(
   /**
    * Removes an entry from the map.
    */
-  def remove(node: Cluster, key: String): ORMap = remove(UniqueAddressAccess.selfUniqueAddress(node), key)
+  def remove(node: Cluster, key: String): ORMap = remove(node.selfUniqueAddress, key)
 
   /**
    * INTERNAL API
