@@ -160,11 +160,7 @@ case class ORSet(
    */
   private[akka] def add(node: UniqueAddress, element: Any): ORSet = {
     val newVclock = vclock :+ node
-    val d = new VectorClock(versions = TreeMap(node -> newVclock.versions(node)))
-    val newDot = elements.get(element) match {
-      case Some(existing) ⇒ d.merge(existing)
-      case None           ⇒ d
-    }
+    val newDot = new VectorClock(versions = TreeMap(node -> newVclock.versions(node)))
     ORSet(elements = elements.updated(element, newDot), vclock = newVclock)
   }
 
