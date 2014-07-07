@@ -55,7 +55,7 @@ import akka.actor.Terminated
  * <a href="http://vimeo.com/43903960">Eventually Consistent Data Structures</a>
  * talk by Sean Cribbs and and the
  * <a href="http://research.microsoft.com/apps/video/dl.aspx?id=153540">talk by Mark Shapiro</a>
- * and the excellent paper <a href="http://hal.upmc.fr/docs/00/55/55/88/PDF/techreport.pdf">
+ * and read the excellent paper <a href="http://hal.upmc.fr/docs/00/55/55/88/PDF/techreport.pdf">
  * A comprehensive study of Convergent and Commutative Replicated Data Types</a>
  * by Mark Shapiro et. al.
  *
@@ -93,7 +93,7 @@ import akka.actor.Terminated
  *
  * In the `Update` message you must pass an expected sequence number for optimistic concurrency
  * control of local updates. It starts at 0 and is incremented by one for each local update. Each
- * data `key` has its own sequence. If the `seqNo` in the `Update` does not match current sequence
+ * data `key` has its own sequence. If the `seqNo` in the `Update` does not match the current sequence
  * number of the `Replicator` the update will be discarded and a [[Replicator.WrongSeqNo]] message
  * is sent back. The reason for requiring a sequence number is to be able to detect concurrent
  * (conflicting) updates from the local node.
@@ -105,7 +105,7 @@ import akka.actor.Terminated
  * data when pruning history belonging to removed cluster nodes (see below).
  *
  * In the `Update` message you can pass an optional request context, which the `Replicator`
- * does not care about, but it is included in the reply messages. This is a convenient
+ * does not care about, but is included in the reply messages. This is a convenient
  * way to pass contextual information (e.g. original sender) without having to use `ask`
  * or local correlation data structures. For example the original command can be passed
  * in a `Update` messages, and retried in case of `WrongSeqNo` failure.
@@ -148,11 +148,11 @@ import akka.actor.Terminated
  *
  * A data entry can be deleted by sending a [[Replicator.Delete]] message to the local
  * local `Replicator`. As reply of the `Delete` a [[Replicator.DeleteSuccess]] is sent to
- * the sender of the `Delete` if the value was successfully replicated according to the supplied
+ * the sender of the `Delete` if the value was successfully deleted according to the supplied
  * consistency level within the supplied timeout. Otherwise a [[Replicator.ReplicationDeleteFailure]]
  * is sent. Note that `ReplicationDeleteFailure` does not mean that the delete completely failed or
  * was rolled back. It may still have been replicated to some nodes, and may eventually be replicated
- * to all nodes. A deleted key can not be reused again, but it is still recommended to delete unused
+ * to all nodes. A deleted key cannot be reused again, but it is still recommended to delete unused
  * data entries because that reduces the replication overhead when new nodes join the cluster.
  * Subsequent `Delete`, `Update` and `Get` requests will be replied with [[Replicator.DataDeleted]].
  * Subscribers will receive [[Replicator.DataDeleted]].
@@ -166,7 +166,7 @@ import akka.actor.Terminated
  * of several steps:
  * <ol>
  * <li>When a node is removed from the cluster it is first important that all updates that were
- * done by that node are disseminated to all other nodes. The pruning will not start until the
+ * done by that node are disseminated to all other nodes. The pruning will not start before the
  * `maxPruningDissemination` duration has elapsed. The time measurement is stopped when any
  * replica is unreachable, so it should be configured to worst case in a healthy cluster.</li>
  * <li>The nodes are ordered by their address and the node ordered first is called leader.
