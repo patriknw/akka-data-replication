@@ -49,9 +49,10 @@ class DataReplication(system: ExtendedActorSystem) extends Extension {
    * `ActorRef` of the [[Replicator]] .
    */
   val replicator: ActorRef =
-    if (isTerminated)
+    if (isTerminated) {
+      system.log.warning("Replicator points to dead letters: Make sure the cluster node is not terminated and has the proper role!")
       system.deadLetters
-    else {
+    } else {
       val name = config.getString("name")
       val gossipInterval = config.getDuration("gossip-interval", MILLISECONDS).millis
       val maxDeltaElements = config.getInt("max-delta-elements")
