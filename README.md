@@ -36,45 +36,46 @@ For convenience it is typically used with the `DataReplication` Akka extension.
 
 A short example of how to use it:
 
-    class DataBot extends Actor with ActorLogging {
-      import DataBot._
-      import Replicator._
-    
-      val replicator = DataReplication(context.system).replicator
-      implicit val cluster = Cluster(context.system)
-    
-      import context.dispatcher
-      val tickTask = context.system.scheduler.schedule(5.seconds, 5.seconds, self, Tick)
-    
-      replicator ! Subscribe("key", self)
-    
-      var seqNo = 0L
-      var current = ORSet()
-    
-      def receive = {
-        case Tick =>
-          val s = ThreadLocalRandom.current().nextInt(97, 123).toChar.toString
-          if (ThreadLocalRandom.current().nextBoolean()) {
-            // add
-            val newData = current :+ s
-            log.info("Adding: {}", s)
-            replicator ! Update("key", newData, seqNo)
-          } else {
-            // remove
-            val newData = current :- s
-            log.info("Removing: {}", s)
-            replicator ! Update("key", newData, seqNo)
-          }
-          seqNo += 1
-    
-        case Changed("key", data: ORSet) =>
-          current = data
-          log.info("Current elements: {}", data.value)
+``` scala
+class DataBot extends Actor with ActorLogging {
+  import DataBot._
+  import Replicator._
+
+  val replicator = DataReplication(context.system).replicator
+  implicit val cluster = Cluster(context.system)
+
+  import context.dispatcher
+  val tickTask = context.system.scheduler.schedule(5.seconds, 5.seconds, self, Tick)
+
+  replicator ! Subscribe("key", self)
+
+  var seqNo = 0L
+  var current = ORSet()
+
+  def receive = {
+    case Tick =>
+      val s = ThreadLocalRandom.current().nextInt(97, 123).toChar.toString
+      if (ThreadLocalRandom.current().nextBoolean()) {
+        // add
+        val newData = current :+ s
+        log.info("Adding: {}", s)
+        replicator ! Update("key", newData, seqNo)
+      } else {
+        // remove
+        val newData = current :- s
+        log.info("Removing: {}", s)
+        replicator ! Update("key", newData, seqNo)
       }
-    
-      override def postStop(): Unit = tickTask.cancel()
-    
-    }
+      seqNo += 1
+
+    case Changed("key", data: ORSet) =>
+      current = data
+      log.info("Current elements: {}", data.value)
+  }
+
+  override def postStop(): Unit = tickTask.cancel()
+}
+```
     
 The full source code for this sample is in 
 [DataBot.scala](https://github.com/patriknw/akka-datareplication/blob/v0.2/src/test/scala/akka/contrib/datareplication/sample/DataBot.scala).   
