@@ -13,11 +13,6 @@ import akka.actor.ActorRef
 import akka.cluster.Cluster
 import scala.concurrent.duration._
 
-/**
- * Akka extension for convenient configuration and use of the
- * [[Replicator]]. Configuration settings are defined in the
- * `akka.contrib.datareplication` section, see `reference.conf`.
- */
 object DataReplication extends ExtensionId[DataReplication] with ExtensionIdProvider {
   override def get(system: ActorSystem): DataReplication = super.get(system)
 
@@ -28,7 +23,9 @@ object DataReplication extends ExtensionId[DataReplication] with ExtensionIdProv
 }
 
 /**
- * @see [[DataReplication$ DataReplication companion object]]
+ * Akka extension for convenient configuration and use of the
+ * [[Replicator]]. Configuration settings are defined in the
+ * `akka.contrib.datareplication` section, see `reference.conf`.
  */
 class DataReplication(system: ExtendedActorSystem) extends Extension {
 
