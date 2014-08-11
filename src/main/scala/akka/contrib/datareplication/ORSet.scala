@@ -149,7 +149,7 @@ case class ORSet(
   /**
    * Adds an element to the set
    */
-  def :+(element: Any)(implicit node: Cluster): ORSet = add(node, element)
+  def +(element: Any)(implicit node: Cluster): ORSet = add(node, element)
 
   /**
    * Adds an element to the set
@@ -160,7 +160,7 @@ case class ORSet(
    * INTERNAL API
    */
   private[akka] def add(node: UniqueAddress, element: Any): ORSet = {
-    val newVclock = vclock :+ node
+    val newVclock = vclock + node
     val newDot = new VectorClock(versions = TreeMap(node -> newVclock.versions(node)))
     ORSet(elements = elements.updated(element, newDot), vclock = newVclock)
   }
@@ -168,7 +168,7 @@ case class ORSet(
   /**
    * Removes an element from the set.
    */
-  def :-(element: Any)(implicit node: Cluster): ORSet = remove(node, element)
+  def -(element: Any)(implicit node: Cluster): ORSet = remove(node, element)
 
   /**
    * Removes an element from the set.

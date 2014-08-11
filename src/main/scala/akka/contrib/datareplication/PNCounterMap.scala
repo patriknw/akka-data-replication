@@ -89,7 +89,7 @@ case class PNCounterMap(
   /**
    * Removes an entry from the map.
    */
-  def :-(key: String)(implicit node: Cluster): PNCounterMap = remove(node, key)
+  def -(key: String)(implicit node: Cluster): PNCounterMap = remove(node, key)
 
   /**
    * Removes an entry from the map.

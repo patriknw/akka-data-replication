@@ -88,13 +88,13 @@ final case class VectorClock(
   /**
    * Increment the version for the node passed as argument. Returns a new VectorClock.
    */
-  def :+(node: Cluster): VectorClock = increment(node)
+  def +(node: Cluster): VectorClock = increment(node)
 
   /**
    * INTERNAL API
    * Increment the version for the node passed as argument. Returns a new VectorClock.
    */
-  private[akka] def :+(node: UniqueAddress): VectorClock = increment(node)
+  private[akka] def +(node: UniqueAddress): VectorClock = increment(node)
 
   /**
    * Increment the version for the node passed as argument. Returns a new VectorClock.
@@ -218,7 +218,7 @@ final case class VectorClock(
     versions.contains(removedNode)
 
   override def prune(removedNode: UniqueAddress, collapseInto: UniqueAddress): VectorClock =
-    copy(versions = versions - removedNode) :+ collapseInto
+    copy(versions = versions - removedNode) + collapseInto
 
   override def pruningCleanup(removedNode: UniqueAddress): VectorClock = copy(versions = versions - removedNode)
 

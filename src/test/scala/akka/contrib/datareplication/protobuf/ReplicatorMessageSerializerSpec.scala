@@ -45,7 +45,7 @@ class ReplicatorMessageSerializerSpec extends TestKit(ActorSystem("ReplicatorMes
 
     "serialize Replicator messages" in {
       val ref1 = system.actorOf(Props.empty, "ref1")
-      val data1 = GSet() :+ "a"
+      val data1 = GSet() + "a"
 
       checkSerialization(Get("A"))
       checkSerialization(Get("A", ReadQuorum, 2.seconds, Some("x")))
@@ -68,7 +68,7 @@ class ReplicatorMessageSerializerSpec extends TestKit(ActorSystem("ReplicatorMes
       checkSerialization(Status(Map("A" -> ByteString.fromString("a"),
         "B" -> ByteString.fromString("b"))))
       checkSerialization(Gossip(Map("A" -> DataEnvelope(data1),
-        "B" -> DataEnvelope(GSet() :+ "b" :+ "c"))))
+        "B" -> DataEnvelope(GSet() + "b" + "c"))))
     }
 
   }

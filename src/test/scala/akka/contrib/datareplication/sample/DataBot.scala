@@ -76,12 +76,12 @@ class DataBot extends Actor with ActorLogging {
       val s = ThreadLocalRandom.current().nextInt(97, 123).toChar.toString
       if (ThreadLocalRandom.current().nextBoolean()) {
         // add
-        val newData = current :+ s
+        val newData = current + s
         log.info("Adding: {}", s)
         replicator ! Update("key", newData, seqNo)
       } else {
         // remove
-        val newData = current :- s
+        val newData = current - s
         log.info("Removing: {}", s)
         replicator ! Update("key", newData, seqNo)
       }

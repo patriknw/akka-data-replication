@@ -43,7 +43,7 @@ case class LWWMap(
   /**
    * Adds an entry to the map
    */
-  def :+(entry: (String, Any))(implicit node: Cluster): LWWMap = {
+  def +(entry: (String, Any))(implicit node: Cluster): LWWMap = {
     val (key, value) = entry
     put(node, key, value)
   }
@@ -68,7 +68,7 @@ case class LWWMap(
   /**
    * Removes an entry from the map.
    */
-  def :-(key: String)(implicit node: Cluster): LWWMap = remove(node, key)
+  def -(key: String)(implicit node: Cluster): LWWMap = remove(node, key)
 
   /**
    * Removes an entry from the map.

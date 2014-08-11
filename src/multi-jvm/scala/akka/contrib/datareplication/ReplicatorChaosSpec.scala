@@ -96,8 +96,8 @@ class ReplicatorChaosSpec extends MultiNodeSpec(ReplicatorChaosSpec) with STMult
         var c = GCounter()
         var pn = PNCounter()
         (0 until 5) foreach { i ⇒
-          c :+= 1
-          pn :-= 1
+          c += 1
+          pn -= 1
           replicator ! Update("A", c, i)
           replicator ! Update("B", pn, i)
           replicator ! Update("C", c, i, WriteAll, timeout)
@@ -106,35 +106,35 @@ class ReplicatorChaosSpec extends MultiNodeSpec(ReplicatorChaosSpec) with STMult
       }
 
       runOn(second) {
-        val c = GCounter() :+ 20
-        val pn = PNCounter() :+ 20
+        val c = GCounter() + 20
+        val pn = PNCounter() + 20
         replicator ! Update("A", c, 0)
         replicator ! Update("B", pn, 0, WriteTwo, timeout)
         replicator ! Update("C", c, 0, WriteAll, timeout)
         receiveN(3).toSet should be(Set(UpdateSuccess("A", 0, None),
           UpdateSuccess("B", 0, None), UpdateSuccess("C", 0, None)))
 
-        replicator ! Update("E", GSet() :+ "e1" :+ "e2", 0)
+        replicator ! Update("E", GSet() + "e1" + "e2", 0)
         expectMsg(UpdateSuccess("E", 0, None))
 
-        replicator ! Update("F", ORSet() :+ "e1" :+ "e2", 0)
+        replicator ! Update("F", ORSet() + "e1" + "e2", 0)
         expectMsg(UpdateSuccess("F", 0, None))
       }
 
       runOn(fourth) {
-        val c = GCounter() :+ 40
+        val c = GCounter() + 40
         replicator ! Update("D", c, 0)
         expectMsg(UpdateSuccess("D", 0, None))
 
-        replicator ! Update("E", GSet() :+ "e2" :+ "e3", 0)
+        replicator ! Update("E", GSet() + "e2" + "e3", 0)
         expectMsg(UpdateSuccess("E", 0, None))
 
-        replicator ! Update("F", ORSet() :+ "e2" :+ "e3", 0)
+        replicator ! Update("F", ORSet() + "e2" + "e3", 0)
         expectMsg(UpdateSuccess("F", 0, None))
       }
 
       runOn(fifth) {
-        val c = GCounter() :+ 50
+        val c = GCounter() + 50
         replicator ! Update("X", c, 0, WriteTwo, timeout)
         expectMsg(UpdateSuccess("X", 0, None))
         replicator ! Delete("X")
@@ -165,30 +165,30 @@ class ReplicatorChaosSpec extends MultiNodeSpec(ReplicatorChaosSpec) with STMult
       runOn(first) {
         replicator ! Get("A")
         val GetSuccess("A", c: GCounter, seqNo, _) = expectMsgType[GetSuccess]
-        replicator ! Update("A", c :+ 1, seqNo, WriteTwo, timeout)
+        replicator ! Update("A", c + 1, seqNo, WriteTwo, timeout)
         expectMsg(UpdateSuccess("A", seqNo, None))
       }
 
       runOn(third) {
         replicator ! Get("A")
         val GetSuccess("A", c: GCounter, seqNo, _) = expectMsgType[GetSuccess]
-        replicator ! Update("A", c :+ 2, seqNo, WriteTwo, timeout)
+        replicator ! Update("A", c + 2, seqNo, WriteTwo, timeout)
         expectMsg(UpdateSuccess("A", seqNo, None))
 
         replicator ! Get("E")
         val GetSuccess("E", sE: GSet, seqNo2, _) = expectMsgType[GetSuccess]
-        replicator ! Update("E", sE :+ "e4", seqNo2, WriteTwo, timeout)
+        replicator ! Update("E", sE + "e4", seqNo2, WriteTwo, timeout)
         expectMsg(UpdateSuccess("E", seqNo, None))
 
         replicator ! Get("F")
         val GetSuccess("F", sF: ORSet, seqNo3, _) = expectMsgType[GetSuccess]
-        replicator ! Update("F", sF :- "e2", seqNo3, WriteTwo, timeout)
+        replicator ! Update("F", sF - "e2", seqNo3, WriteTwo, timeout)
         expectMsg(UpdateSuccess("F", seqNo, None))
       }
       runOn(fourth) {
         replicator ! Get("D")
         val GetSuccess("D", c: GCounter, seqNo, _) = expectMsgType[GetSuccess]
-        replicator ! Update("D", c :+ 1, seqNo, WriteTwo, timeout)
+        replicator ! Update("D", c + 1, seqNo, WriteTwo, timeout)
         expectMsg(UpdateSuccess("D", seqNo, None))
       }
       enterBarrier("update-during-split")

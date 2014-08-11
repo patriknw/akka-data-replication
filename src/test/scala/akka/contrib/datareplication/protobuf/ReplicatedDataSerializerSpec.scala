@@ -55,18 +55,18 @@ class ReplicatedDataSerializerSpec extends TestKit(ActorSystem("ReplicatedDataSe
 
     "serialize GSet" in {
       checkSerialization(GSet())
-      checkSerialization(GSet() :+ "a")
-      checkSerialization(GSet() :+ "a" :+ "b")
+      checkSerialization(GSet() + "a")
+      checkSerialization(GSet() + "a" + "b")
 
-      checkSerialization(GSet() :+ 1 :+ 2 :+ 3)
-      checkSerialization(GSet() :+ address1 :+ address2)
+      checkSerialization(GSet() + 1 + 2 + 3)
+      checkSerialization(GSet() + address1 + address2)
 
-      checkSerialization(GSet() :+ 1L :+ "2" :+ 3 :+ address1)
+      checkSerialization(GSet() + 1L + "2" + 3 + address1)
 
-      checkSameContent(GSet() :+ "a" :+ "b", GSet() :+ "a" :+ "b")
-      checkSameContent(GSet() :+ "a" :+ "b", GSet() :+ "b" :+ "a")
-      checkSameContent(GSet() :+ address1 :+ address2 :+ address3, GSet() :+ address2 :+ address1 :+ address3)
-      checkSameContent(GSet() :+ address1 :+ address2 :+ address3, GSet() :+ address3 :+ address2 :+ address1)
+      checkSameContent(GSet() + "a" + "b", GSet() + "a" + "b")
+      checkSameContent(GSet() + "a" + "b", GSet() + "b" + "a")
+      checkSameContent(GSet() + address1 + address2 + address3, GSet() + address2 + address1 + address3)
+      checkSameContent(GSet() + address1 + address2 + address3, GSet() + address3 + address2 + address1)
     }
 
     "serialize ORSet" in {
@@ -131,8 +131,8 @@ class ReplicatedDataSerializerSpec extends TestKit(ActorSystem("ReplicatedDataSe
 
     "serialize ORMap" in {
       checkSerialization(ORMap())
-      checkSerialization(ORMap().put(address1, "a", GSet() :+ "A"))
-      checkSerialization(ORMap().put(address1, "a", GSet() :+ "A").put(address2, "b", GSet() :+ "B"))
+      checkSerialization(ORMap().put(address1, "a", GSet() + "A"))
+      checkSerialization(ORMap().put(address1, "a", GSet() + "A").put(address2, "b", GSet() + "B"))
     }
 
     "serialize LWWMap" in {
