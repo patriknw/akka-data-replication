@@ -1,7 +1,7 @@
 import com.typesafe.sbt.SbtMultiJvm
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 
-val akkaVersion = "2.3.4"
+val akkaVersion = "2.3.5"
 
 val project = Project(
   id = "akka-datareplication",
