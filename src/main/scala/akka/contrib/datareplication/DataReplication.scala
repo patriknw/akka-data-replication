@@ -29,7 +29,7 @@ object DataReplication extends ExtensionId[DataReplication] with ExtensionIdProv
  */
 class DataReplication(system: ExtendedActorSystem) extends Extension {
 
-  private val config = system.settings.config.getConfig("akka.contrib.datareplication")
+  private val config = system.settings.config.getConfig("akka.contrib.data-replication")
 
   private val role: Option[String] = config.getString("role") match {
     case "" ⇒ None

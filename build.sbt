@@ -5,15 +5,15 @@ import generate.protobuf._
 val akkaVersion = "2.3.5"
 
 val project = Project(
-  id = "akka-datareplication",
+  id = "akka-data-replication",
   base = file("."),
   settings = Project.defaultSettings ++ SbtMultiJvm.multiJvmSettings ++ bintrayPublishSettings ++ Protobuf.settings ++ Seq(
     organization := "com.github.patriknw",
-    name := "akka-datareplication",
+    name := "akka-data-replication",
     licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0")),
     version := "0.3-SNAPSHOT",
     scalaVersion := "2.10.4",
-    crossScalaVersions := Seq("2.10.4", "2.11.1"),
+    crossScalaVersions := Seq("2.10.4", "2.11.2"),
     libraryDependencies ++= Seq(
       "com.typesafe.akka" %% "akka-cluster" % akkaVersion,
       "com.typesafe.akka" %% "akka-multi-node-testkit" % akkaVersion,
