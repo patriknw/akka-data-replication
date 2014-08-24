@@ -210,9 +210,35 @@ object Replicator {
   }
   case class ReplicationUpdateFailure(key: String, request: Option[Any]) extends UpdateFailure
   case class ConflictingType(key: String, errorMessage: String, request: Option[Any])
-    extends RuntimeException with NoStackTrace with UpdateFailure
+    extends RuntimeException with NoStackTrace with UpdateFailure {
+    override def toString: String = s"ConflictingType [$key]: $errorMessage"
+  }
   case class InvalidUsage(key: String, errorMessage: String, request: Option[Any])
-    extends RuntimeException with NoStackTrace with UpdateFailure
+    extends RuntimeException with NoStackTrace with UpdateFailure {
+    override def toString: String = s"InvalidUsage [$key]: $errorMessage"
+  }
+
+  // FIXME complete experiment with UpdateOp with it turns out to be a good idea, otherwise remove
+  object UpdateOp {
+    /**
+     * Modify value of local `Replicator`, i.e. `ReadOne` / `WriteOne`
+     * consistency.
+     */
+    def apply(key: String)(op: ReplicatedData => ReplicatedData): UpdateOp =
+      UpdateOp(key, ReadOne, WriteOne, Duration.Zero, None)(op)
+
+    /**
+     * Modify value of local `Replicator`, i.e. `ReadOne` / `WriteOne`
+     * consistency.
+     */
+    def apply(key: String, request: Option[Any])(op: ReplicatedData => ReplicatedData): UpdateOp =
+      UpdateOp(key, ReadOne, WriteOne, Duration.Zero, request)(op)
+  }
+  /**
+   * WARNING: This API is just an experiment so far
+   */
+  case class UpdateOp(key: String, readConsistency: ReadConsistency, writeConsistency: WriteConsistency,
+                      timeout: FiniteDuration, request: Option[Any] = None)(val op: ReplicatedData => ReplicatedData)
 
   object Delete {
     /**
@@ -236,7 +262,9 @@ object Replicator {
   case class DeleteSuccess(key: String) extends DeleteResponse
   case class ReplicationDeleteFailure(key: String) extends DeleteResponse
   case class DataDeleted(key: String)
-    extends RuntimeException with NoStackTrace with DeleteResponse
+    extends RuntimeException with NoStackTrace with DeleteResponse {
+    override def toString: String = s"DataDeleted [$key]"
+  }
 
   /**
    * Marker trait for remote messages serialized by
@@ -554,30 +582,33 @@ class Replicator(
   def matchingRole(m: Member): Boolean = role.forall(m.hasRole)
 
   def receive = {
-    case Get(key, consistency, timeout, req)          ⇒ receiveGet(key, consistency, timeout, req)
-    case Read(key)                                    ⇒ receiveRead(key)
-    case Update(key, _, _, _, req) if !isLocalSender  ⇒ receiveInvalidUpdate(key, req)
-    case Update(key, data, consistency, timeout, req) ⇒ receiveUpdate(key, data, consistency, timeout, req)
-    case Write(key, envelope)                         ⇒ receiveWrite(key, envelope)
-    case ReadRepair(key, envelope)                    ⇒ write(key, envelope)
-    case GetKeys                                      ⇒ receiveGetKeys()
-    case Delete(key, consistency, timeout)            ⇒ receiveDelete(key, consistency, timeout)
-    case GossipTick                                   ⇒ receiveGossipTick()
-    case Status(otherDigests)                         ⇒ receiveStatus(otherDigests)
-    case Gossip(updatedData)                          ⇒ receiveGossip(updatedData)
-    case Subscribe(key, subscriber)                   ⇒ receiveSubscribe(key, subscriber)
-    case Unsubscribe(key, subscriber)                 ⇒ receiveUnsubscribe(key, subscriber)
-    case Terminated(ref)                              ⇒ receiveTerminated(ref)
-    case MemberUp(m)                                  ⇒ receiveMemberUp(m)
-    case MemberRemoved(m, _)                          ⇒ receiveMemberRemoved(m)
-    case _: MemberEvent                               ⇒ // not of interest
-    case UnreachableMember(m)                         ⇒ receiveUnreachable(m)
-    case ReachableMember(m)                           ⇒ receiveReachable(m)
-    case LeaderChanged(leader)                        ⇒ receiveLeaderChanged(leader, None)
-    case RoleLeaderChanged(role, leader)              ⇒ receiveLeaderChanged(leader, Some(role))
-    case ClockTick                                    ⇒ receiveClockTick()
-    case RemovedNodePruningTick                       ⇒ receiveRemovedNodePruningTick()
-    case GetNodeCount                                 ⇒ receiveGetNodeCount()
+    case Get(key, consistency, timeout, req)            ⇒ receiveGet(key, consistency, timeout, req)
+    case Read(key)                                      ⇒ receiveRead(key)
+    case Update(key, _, _, _, req) if !isLocalSender    ⇒ receiveInvalidUpdate(key, req)
+    case Update(key, data, consistency, timeout, req)   ⇒ receiveUpdate(key, data, consistency, timeout, req)
+    case Write(key, envelope)                           ⇒ receiveWrite(key, envelope)
+    case ReadRepair(key, envelope)                      ⇒ write(key, envelope)
+    case GetKeys                                        ⇒ receiveGetKeys()
+    case Delete(key, consistency, timeout)              ⇒ receiveDelete(key, consistency, timeout)
+    case GossipTick                                     ⇒ receiveGossipTick()
+    case Status(otherDigests)                           ⇒ receiveStatus(otherDigests)
+    case Gossip(updatedData)                            ⇒ receiveGossip(updatedData)
+    case Subscribe(key, subscriber)                     ⇒ receiveSubscribe(key, subscriber)
+    case Unsubscribe(key, subscriber)                   ⇒ receiveUnsubscribe(key, subscriber)
+    case Terminated(ref)                                ⇒ receiveTerminated(ref)
+    case MemberUp(m)                                    ⇒ receiveMemberUp(m)
+    case MemberRemoved(m, _)                            ⇒ receiveMemberRemoved(m)
+    case _: MemberEvent                                 ⇒ // not of interest
+    case UnreachableMember(m)                           ⇒ receiveUnreachable(m)
+    case ReachableMember(m)                             ⇒ receiveReachable(m)
+    case LeaderChanged(leader)                          ⇒ receiveLeaderChanged(leader, None)
+    case RoleLeaderChanged(role, leader)                ⇒ receiveLeaderChanged(leader, Some(role))
+    case ClockTick                                      ⇒ receiveClockTick()
+    case RemovedNodePruningTick                         ⇒ receiveRemovedNodePruningTick()
+    case GetNodeCount                                   ⇒ receiveGetNodeCount()
+
+    case UpdateOp(key, _, _, _, req) if !isLocalSender  ⇒ receiveInvalidUpdate(key, req)
+    case u @ UpdateOp(key, readC, writeC, timeout, req) ⇒ receiveUpdateOp(key, u.op, readC, writeC, timeout, req)
   }
 
   def receiveGet(key: String, consistency: ReadConsistency, timeout: FiniteDuration, req: Option[Any]): Unit = {
@@ -616,6 +647,29 @@ class Replicator(
             nodes, sender()))
       case Failure(e) ⇒
         sender() ! e
+    }
+  }
+
+  def receiveUpdateOp(key: String, op: ReplicatedData => ReplicatedData,
+                      readConsistency: ReadConsistency, writeConsistency: WriteConsistency,
+                      timeout: FiniteDuration, req: Option[Any]): Unit = {
+    // FIXME when readConsistency != ReadOne we must delegate to a ReadWriteAggregator actor
+    //       and perhaps not allow any local changes of this key until that is done?
+    Try {
+      getData(key) match {
+        case Some(DataEnvelope(DeletedData, _))         ⇒ throw new DataDeleted(key)
+        case Some(envelope @ DataEnvelope(existing, _)) ⇒ op(existing)
+        case None                                       => throw new RuntimeException(s"Key [$key] not found")
+      }
+    } match {
+      case Success(newData) =>
+        receiveUpdate(key, newData, writeConsistency, timeout, req)
+      case Failure(e: DataDeleted) =>
+        sender() ! e
+      case Failure(e) =>
+        // FIXME use a another response message for this failure, i.e. exception throw by `op`
+        //       and NotFound
+        sender() ! InvalidUsage(key, "UpdateOp failed: " + e.getMessage(), req)
     }
   }
 
