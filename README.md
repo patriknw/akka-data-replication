@@ -93,14 +93,14 @@ Two other examples:
 Dependency
 ----------
 
-Latest version of `akka-datareplication` is `0.2`. This version depends on Akka 2.3.4 and is
-cross-built against Scala 2.10.4 and 2.11.0.
+Latest version of `akka-data-replication` is `0.2`. This version depends on Akka 2.3.5 and is
+cross-built against Scala 2.10.4 and 2.11.2.
 
 Add the following lines to your `build.sbt` file:
 
     resolvers += "patriknw at bintray" at "http://dl.bintray.com/patriknw/maven"
 
-    libraryDependencies += "com.github.patriknw" %% "akka-datareplication" % "0.2"
+    libraryDependencies += "com.github.patriknw" %% "akka-data-replication" % "0.2"
 
 More Resources
 --------------
