@@ -31,162 +31,6 @@ import akka.cluster.ClusterEvent.InitialStateAsEvents
 import akka.actor.Address
 import akka.actor.Terminated
 
-/**
- * A replicated in-memory data store supporting low latency and high availability
- * requirements.
- *
- * The [[Replicator]] actor takes care of direct replication and gossip based
- * dissemination of Conflict Free Replicated Data Types (CRDT) to replicas in the
- * the cluster.
- * The data types must be convergent CRDTs and implement [[ReplicatedData]], i.e.
- * they provide a monotonic merge function and the state changes always converge.
- *
- * You can use your own custom [[ReplicatedData]] types, and several types are provided
- * by this package, such as:
- *
- * <ul>
- * <li>Counters: [[GCounter]], [[PNCounter]]</li>
- * <li>Registers: [[LWWRegister]], [[Flag]]</li>
- * <li>Sets: [[GSet]], [[ORSet]]</li>
- * <li>Maps: [[ORMap]], [[LWWMap]], [[PNCounterMap]]</li>
- * </ul>
- *
- * For good introduction to the CRDT subject watch the
- * <a href="http://vimeo.com/43903960">Eventually Consistent Data Structures</a>
- * talk by Sean Cribbs and and the
- * <a href="http://research.microsoft.com/apps/video/dl.aspx?id=153540">talk by Mark Shapiro</a>
- * and read the excellent paper <a href="http://hal.upmc.fr/docs/00/55/55/88/PDF/techreport.pdf">
- * A comprehensive study of Convergent and Commutative Replicated Data Types</a>
- * by Mark Shapiro et. al.
- *
- * The `Replicator` actor is started on each node in the cluster, or group of
- * nodes tagged with a specific role. It communicates with other `Replicator` instances
- * with the same path (without address) that are running on other nodes . For convenience it
- * can be used with the [[DataReplication]] extension.
- *
- * A modified [[ReplicatedData]] instance is replicated by sending it
- * in a [[Replicator.Update]] message to the the local `Replicator`.
- * You supply a consistency level which has the following meaning:
- * <ul>
- * <li>`WriteOne` the value will immediately only be written to the local replica,
- *     and later disseminated with gossip</li>
- * <li>`WriteTwo` the value will immediately be written to at least two replicas,
- *     including the local replica</li>
- * <li>`WriteThree` the value will immediately be written to at least three replicas,
- *     including the local replica</li>
- * <li>`WriteTo(n)` the value will immediately be written to at least `n` replicas,
- *     including the local replica</li>
- * <li>`WriteQuorum` the value will immediately be written to a majority of replicas, i.e.
- *     at least `N/2 + 1` replicas, where N is the number of nodes in the cluster
- *     (or cluster role group)</li>
- * <li>`WriteAll` the value will immediately be written to all nodes in the cluster
- *     (or all nodes in the cluster role group)</li>
- * </ul>
- *
- * As reply of the `Update` a [[Replicator.UpdateSuccess]] is sent to the sender of the
- * `Update` if the value was successfully replicated according to the supplied consistency
- * level within the supplied timeout. Otherwise a [[Replicator.UpdateFailure]] is sent.
- * Note that `UpdateFailure` does not mean that the update completely failed or was rolled back.
- * It may still have been replicated to some nodes, and will eventually be replicated to all
- * nodes with the gossip protocol. The data will always converge to the the same value no
- * matter how many times you retry the `Update`.
- *
- * In the `Update` message you must pass an expected sequence number for optimistic concurrency
- * control of local updates. It starts at 0 and is incremented by one for each local update. Each
- * data `key` has its own sequence. If the `seqNo` in the `Update` does not match the current sequence
- * number of the `Replicator` the update will be discarded and a [[Replicator.WrongSeqNo]] message
- * is sent back. The reason for requiring a sequence number is to be able to detect concurrent
- * (conflicting) updates from the local node.
- * For example two different actors running in the same `ActorSystem` changing the same data
- * item and sending the updates to the `Replicator` independent of each other. Normally you would
- * serialize the updates via one actor, and then you can maintain a sequence number counter
- * in that actor. Even in that case there is a possibility that you will receive
- * [[Replicator.WrongSeqNo]]. It can happen when the `Replicator` itself modifies the
- * data when pruning history belonging to removed cluster nodes (see below).
- *
- * In the `Update` message you can pass an optional request context, which the `Replicator`
- * does not care about, but is included in the reply messages. This is a convenient
- * way to pass contextual information (e.g. original sender) without having to use `ask`
- * or local correlation data structures. For example the original command can be passed
- * in a `Update` messages, and retried in case of `WrongSeqNo` failure.
- *
- * To retrieve the current value of a data you send [[Replicator.Get]] message to the
- * `Replicator`. You supply a consistency level which has the following meaning:
- * <ul>
- * <li>`ReadOne` the value will only be read from the local replica</li>
- * <li>`ReadTwo` the value will be read and merged from two replicas,
- *     including the local replica</li>
- * <li>`ReadThree` the value will be read and merged from three replicas,
- *     including the local replica</li>
- * <li>`ReadFrom(n)` the value will be read and merged from `n` replicas,
- *     including the local replica</li>
- * <li>`ReadQuorum` the value will read and merged from a majority of replicas, i.e.
- *     at least `N/2 + 1` replicas, where N is the number of nodes in the cluster
- *     (or cluster role group)</li>
- * <li>`ReadAll` the value will be read and merged from all nodes in the cluster
- *     (or all nodes in the cluster role group)</li>
- * </ul>
- *
- * As reply of the `Get` a [[Replicator.GetSuccess]] is sent to the sender of the
- * `Get` if the value was successfully retrieved according to the supplied consistency
- * level within the supplied timeout. Otherwise a [[Replicator.GetFailure]] is sent.
- * If the key does not exist the reply will be [[Replicator.GetFailure]].
- * You will always read your own writes.
- *
- * In the `Get` message you can pass an optional request context in the same way as for the
- * `Update` message, described above. For example the original sender can be passed and replied
- * to after receiving and transforming `GetSuccess`.
- *
- * You can retrieve all keys of a local replica by sending [[Replicator.GetKeys]] message to the
- * `Replicator`. The reply of `GetKeys` is a [[Replicator.GetKeysResult]] message.
- *
- * You may also register interest in change notifications by sending [[Replicator.Subscribe]]
- * message to the `Replicator`. It will send [[Replicator.Changed]] messages to the registered
- * subscriber when the data for the subscribed key is updated. The subscriber is automatically
- * removed if the subscriber is terminated. A subscriber can also be deregistered with the
- * [[Replicator.Unsubscribe]] message.
- *
- * A data entry can be deleted by sending a [[Replicator.Delete]] message to the local
- * local `Replicator`. As reply of the `Delete` a [[Replicator.DeleteSuccess]] is sent to
- * the sender of the `Delete` if the value was successfully deleted according to the supplied
- * consistency level within the supplied timeout. Otherwise a [[Replicator.ReplicationDeleteFailure]]
- * is sent. Note that `ReplicationDeleteFailure` does not mean that the delete completely failed or
- * was rolled back. It may still have been replicated to some nodes, and may eventually be replicated
- * to all nodes. A deleted key cannot be reused again, but it is still recommended to delete unused
- * data entries because that reduces the replication overhead when new nodes join the cluster.
- * Subsequent `Delete`, `Update` and `Get` requests will be replied with [[Replicator.DataDeleted]].
- * Subscribers will receive [[Replicator.DataDeleted]].
- *
- * One thing that can be problematic with CRDTs is that some data types accumulate history (garbage).
- * For example a `GCounter` keeps track of one counter per node. If a `GCounter` has been updated
- * from one node it will associate the identifier of that node forever. That can become a problem
- * for long running systems with many cluster nodes being added and removed. To solve this problem
- * the `Replicator` performs pruning of data associated with nodes that have been removed from the
- * cluster. Data types that need pruning have to implement [[RemovedNodePruning]]. The pruning consists
- * of several steps:
- * <ol>
- * <li>When a node is removed from the cluster it is first important that all updates that were
- * done by that node are disseminated to all other nodes. The pruning will not start before the
- * `maxPruningDissemination` duration has elapsed. The time measurement is stopped when any
- * replica is unreachable, so it should be configured to worst case in a healthy cluster.</li>
- * <li>The nodes are ordered by their address and the node ordered first is called leader.
- * The leader initiates the pruning by adding a `PruningInitialized` marker in the data envelope.
- * This is gossiped to all other nodes and they mark it as seen when they receive it.</li>
- * <li>When the leader sees that all other nodes have seen the `PruningInitialized` marker
- * the leader performs the pruning and changes the marker to `PruningPerformed` so that nobody
- * else will redo the pruning. The data envelope with this pruning state is a CRDT itself.
- * The pruning is typically performed by "moving" the part of the data associated with
- * the removed node to the leader node. For example, a `GCounter` is a `Map` with the node as key
- * and the counts done by that node as value. When pruning the value of the removed node is
- * moved to the entry owned by the leader node. See [[RemovedNodePruning#prune]].</li>
- * <li>Thereafter the data is always cleared from parts associated with the removed node so that
- * it does not come back when merging. See [[RemovedNodePruning#pruningCleanup]]</li>
- * <li>After another `maxPruningDissemination` duration after pruning the last entry from the
- * removed node the `PruningPerformed` markers in the data envelope are collapsed into a
- * single tombstone entry, for efficiency. Clients may continue to use old data and therefore
- * all data are always cleared from parts associated with tombstoned nodes. </li>
- * </ol>
- */
 object Replicator {
 
   /**
@@ -485,10 +329,160 @@ object Replicator {
 }
 
 /**
- * A replicated in-memory data store, described in
- * [[Replicator$ Replicator companion object]].
+ * A replicated in-memory data store supporting low latency and high availability
+ * requirements.
  *
- * @see [[Replicator$ Replicator companion object]]
+ * The `Replicator` actor takes care of direct replication and gossip based
+ * dissemination of Conflict Free Replicated Data Types (CRDT) to replicas in the
+ * the cluster.
+ * The data types must be convergent CRDTs and implement [[ReplicatedData]], i.e.
+ * they provide a monotonic merge function and the state changes always converge.
+ *
+ * You can use your own custom [[ReplicatedData]] types, and several types are provided
+ * by this package, such as:
+ *
+ * <ul>
+ * <li>Counters: [[GCounter]], [[PNCounter]]</li>
+ * <li>Registers: [[LWWRegister]], [[Flag]]</li>
+ * <li>Sets: [[GSet]], [[ORSet]]</li>
+ * <li>Maps: [[ORMap]], [[LWWMap]], [[PNCounterMap]]</li>
+ * </ul>
+ *
+ * For good introduction to the CRDT subject watch the
+ * <a href="http://vimeo.com/43903960">Eventually Consistent Data Structures</a>
+ * talk by Sean Cribbs and and the
+ * <a href="http://research.microsoft.com/apps/video/dl.aspx?id=153540">talk by Mark Shapiro</a>
+ * and read the excellent paper <a href="http://hal.upmc.fr/docs/00/55/55/88/PDF/techreport.pdf">
+ * A comprehensive study of Convergent and Commutative Replicated Data Types</a>
+ * by Mark Shapiro et. al.
+ *
+ * The `Replicator` actor is started on each node in the cluster, or group of
+ * nodes tagged with a specific role. It communicates with other `Replicator` instances
+ * with the same path (without address) that are running on other nodes . For convenience it
+ * can be used with the [[DataReplication]] extension.
+ *
+ * A modified [[ReplicatedData]] instance is replicated by sending it
+ * in a [[Replicator.Update]] message to the the local `Replicator`.
+ * You supply a consistency level which has the following meaning:
+ * <ul>
+ * <li>`WriteOne` the value will immediately only be written to the local replica,
+ *     and later disseminated with gossip</li>
+ * <li>`WriteTwo` the value will immediately be written to at least two replicas,
+ *     including the local replica</li>
+ * <li>`WriteThree` the value will immediately be written to at least three replicas,
+ *     including the local replica</li>
+ * <li>`WriteTo(n)` the value will immediately be written to at least `n` replicas,
+ *     including the local replica</li>
+ * <li>`WriteQuorum` the value will immediately be written to a majority of replicas, i.e.
+ *     at least `N/2 + 1` replicas, where N is the number of nodes in the cluster
+ *     (or cluster role group)</li>
+ * <li>`WriteAll` the value will immediately be written to all nodes in the cluster
+ *     (or all nodes in the cluster role group)</li>
+ * </ul>
+ *
+ * As reply of the `Update` a [[Replicator.UpdateSuccess]] is sent to the sender of the
+ * `Update` if the value was successfully replicated according to the supplied consistency
+ * level within the supplied timeout. Otherwise a [[Replicator.UpdateFailure]] is sent.
+ * Note that `UpdateFailure` does not mean that the update completely failed or was rolled back.
+ * It may still have been replicated to some nodes, and will eventually be replicated to all
+ * nodes with the gossip protocol. The data will always converge to the the same value no
+ * matter how many times you retry the `Update`.
+ *
+ * In the `Update` message you must pass an expected sequence number for optimistic concurrency
+ * control of local updates. It starts at 0 and is incremented by one for each local update. Each
+ * data `key` has its own sequence. If the `seqNo` in the `Update` does not match the current sequence
+ * number of the `Replicator` the update will be discarded and a [[Replicator.WrongSeqNo]] message
+ * is sent back. The reason for requiring a sequence number is to be able to detect concurrent
+ * (conflicting) updates from the local node.
+ * For example two different actors running in the same `ActorSystem` changing the same data
+ * item and sending the updates to the `Replicator` independent of each other. Normally you would
+ * serialize the updates via one actor, and then you can maintain a sequence number counter
+ * in that actor. Even in that case there is a possibility that you will receive
+ * [[Replicator.WrongSeqNo]]. It can happen when the `Replicator` itself modifies the
+ * data when pruning history belonging to removed cluster nodes (see below).
+ *
+ * In the `Update` message you can pass an optional request context, which the `Replicator`
+ * does not care about, but is included in the reply messages. This is a convenient
+ * way to pass contextual information (e.g. original sender) without having to use `ask`
+ * or local correlation data structures. For example the original command can be passed
+ * in a `Update` messages, and retried in case of `WrongSeqNo` failure.
+ *
+ * To retrieve the current value of a data you send [[Replicator.Get]] message to the
+ * `Replicator`. You supply a consistency level which has the following meaning:
+ * <ul>
+ * <li>`ReadOne` the value will only be read from the local replica</li>
+ * <li>`ReadTwo` the value will be read and merged from two replicas,
+ *     including the local replica</li>
+ * <li>`ReadThree` the value will be read and merged from three replicas,
+ *     including the local replica</li>
+ * <li>`ReadFrom(n)` the value will be read and merged from `n` replicas,
+ *     including the local replica</li>
+ * <li>`ReadQuorum` the value will read and merged from a majority of replicas, i.e.
+ *     at least `N/2 + 1` replicas, where N is the number of nodes in the cluster
+ *     (or cluster role group)</li>
+ * <li>`ReadAll` the value will be read and merged from all nodes in the cluster
+ *     (or all nodes in the cluster role group)</li>
+ * </ul>
+ *
+ * As reply of the `Get` a [[Replicator.GetSuccess]] is sent to the sender of the
+ * `Get` if the value was successfully retrieved according to the supplied consistency
+ * level within the supplied timeout. Otherwise a [[Replicator.GetFailure]] is sent.
+ * If the key does not exist the reply will be [[Replicator.GetFailure]].
+ * You will always read your own writes.
+ *
+ * In the `Get` message you can pass an optional request context in the same way as for the
+ * `Update` message, described above. For example the original sender can be passed and replied
+ * to after receiving and transforming `GetSuccess`.
+ *
+ * You can retrieve all keys of a local replica by sending [[Replicator.GetKeys]] message to the
+ * `Replicator`. The reply of `GetKeys` is a [[Replicator.GetKeysResult]] message.
+ *
+ * You may also register interest in change notifications by sending [[Replicator.Subscribe]]
+ * message to the `Replicator`. It will send [[Replicator.Changed]] messages to the registered
+ * subscriber when the data for the subscribed key is updated. The subscriber is automatically
+ * removed if the subscriber is terminated. A subscriber can also be deregistered with the
+ * [[Replicator.Unsubscribe]] message.
+ *
+ * A data entry can be deleted by sending a [[Replicator.Delete]] message to the local
+ * local `Replicator`. As reply of the `Delete` a [[Replicator.DeleteSuccess]] is sent to
+ * the sender of the `Delete` if the value was successfully deleted according to the supplied
+ * consistency level within the supplied timeout. Otherwise a [[Replicator.ReplicationDeleteFailure]]
+ * is sent. Note that `ReplicationDeleteFailure` does not mean that the delete completely failed or
+ * was rolled back. It may still have been replicated to some nodes, and may eventually be replicated
+ * to all nodes. A deleted key cannot be reused again, but it is still recommended to delete unused
+ * data entries because that reduces the replication overhead when new nodes join the cluster.
+ * Subsequent `Delete`, `Update` and `Get` requests will be replied with [[Replicator.DataDeleted]].
+ * Subscribers will receive [[Replicator.DataDeleted]].
+ *
+ * One thing that can be problematic with CRDTs is that some data types accumulate history (garbage).
+ * For example a `GCounter` keeps track of one counter per node. If a `GCounter` has been updated
+ * from one node it will associate the identifier of that node forever. That can become a problem
+ * for long running systems with many cluster nodes being added and removed. To solve this problem
+ * the `Replicator` performs pruning of data associated with nodes that have been removed from the
+ * cluster. Data types that need pruning have to implement [[RemovedNodePruning]]. The pruning consists
+ * of several steps:
+ * <ol>
+ * <li>When a node is removed from the cluster it is first important that all updates that were
+ * done by that node are disseminated to all other nodes. The pruning will not start before the
+ * `maxPruningDissemination` duration has elapsed. The time measurement is stopped when any
+ * replica is unreachable, so it should be configured to worst case in a healthy cluster.</li>
+ * <li>The nodes are ordered by their address and the node ordered first is called leader.
+ * The leader initiates the pruning by adding a `PruningInitialized` marker in the data envelope.
+ * This is gossiped to all other nodes and they mark it as seen when they receive it.</li>
+ * <li>When the leader sees that all other nodes have seen the `PruningInitialized` marker
+ * the leader performs the pruning and changes the marker to `PruningPerformed` so that nobody
+ * else will redo the pruning. The data envelope with this pruning state is a CRDT itself.
+ * The pruning is typically performed by "moving" the part of the data associated with
+ * the removed node to the leader node. For example, a `GCounter` is a `Map` with the node as key
+ * and the counts done by that node as value. When pruning the value of the removed node is
+ * moved to the entry owned by the leader node. See [[RemovedNodePruning#prune]].</li>
+ * <li>Thereafter the data is always cleared from parts associated with the removed node so that
+ * it does not come back when merging. See [[RemovedNodePruning#pruningCleanup]]</li>
+ * <li>After another `maxPruningDissemination` duration after pruning the last entry from the
+ * removed node the `PruningPerformed` markers in the data envelope are collapsed into a
+ * single tombstone entry, for efficiency. Clients may continue to use old data and therefore
+ * all data are always cleared from parts associated with tombstoned nodes. </li>
+ * </ol>
  */
 class Replicator(
   role: Option[String],
