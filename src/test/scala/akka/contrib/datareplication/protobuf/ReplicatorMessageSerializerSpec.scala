@@ -49,8 +49,8 @@ class ReplicatorMessageSerializerSpec extends TestKit(ActorSystem("ReplicatorMes
 
       checkSerialization(Get("A"))
       checkSerialization(Get("A", ReadQuorum, 2.seconds, Some("x")))
-      checkSerialization(GetSuccess("A", data1, 17, None))
-      checkSerialization(GetSuccess("A", data1, 17, Some("x")))
+      checkSerialization(GetSuccess("A", data1, None))
+      checkSerialization(GetSuccess("A", data1, Some("x")))
       checkSerialization(NotFound("A", Some("x")))
       checkSerialization(GetFailure("A", Some("x")))
       checkSerialization(Subscribe("A", ref1))

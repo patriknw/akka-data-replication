@@ -75,22 +75,17 @@ class ShoppingCart(userId: String) extends Actor with Stash {
   }
 
   def addItemInProgress(item: LineItem): Receive = {
-    case GetSuccess(_, data: LWWMap, seqNo, _) ⇒
+    case GetSuccess(_, data: LWWMap, _) ⇒
       val newData = update(data, item)
-      replicator ! Update(DataKey, newData, seqNo, WriteQuorum, timeout)
+      replicator ! Update(DataKey, newData, WriteQuorum, timeout)
 
     case _: NotFound ⇒
       val data = LWWMap() + (item.productId -> item)
-      replicator ! Update(DataKey, data, 0, WriteQuorum, timeout)
+      replicator ! Update(DataKey, data, WriteQuorum, timeout)
 
     case _: GetFailure ⇒
       // ReadQuorum failure, try again with local read
       replicator ! Get(DataKey, ReadOne, timeout)
-
-    case WrongSeqNo(_, data: LWWMap, seqNo, currentSeqNo, _) ⇒
-      // try again with currentSeqNo
-      val newData = update(data, item)
-      replicator ! Update(DataKey, newData, currentSeqNo, WriteQuorum, timeout)
 
     case _: UpdateSuccess | _: ReplicationUpdateFailure ⇒
       // ReplicationUpdateFailure, will eventually be replicated
@@ -101,7 +96,7 @@ class ShoppingCart(userId: String) extends Actor with Stash {
 
   def getCartInProgress(replyTo: ActorRef): Receive = {
 
-    case GetSuccess(_, data: LWWMap, _, _) ⇒
+    case GetSuccess(_, data: LWWMap, _) ⇒
       val cart = Cart(data.entries.values.map { case line: LineItem ⇒ line }.toSet)
       replyTo ! cart
       becomeReady()
@@ -117,9 +112,9 @@ class ShoppingCart(userId: String) extends Actor with Stash {
 
   def removeItemInProgress(productId: String): Receive = {
 
-    case GetSuccess(_, data: LWWMap, seqNo, _) ⇒
+    case GetSuccess(_, data: LWWMap, _) ⇒
       val newData = data - productId
-      replicator ! Update(DataKey, newData, seqNo, WriteQuorum, timeout)
+      replicator ! Update(DataKey, newData, WriteQuorum, timeout)
 
     case _: GetFailure ⇒
       // ReadQuorum failure, try again with local read
@@ -127,11 +122,6 @@ class ShoppingCart(userId: String) extends Actor with Stash {
 
     case _: NotFound ⇒
     // ok, cart not replicated yet, not possible to remove item
-
-    case WrongSeqNo(_, data: LWWMap, seqNo, currentSeqNo, _) ⇒
-      // try again with currentSeqNo
-      val newData = data - productId
-      replicator ! Update(DataKey, newData, currentSeqNo, WriteQuorum, timeout)
 
     case _: UpdateSuccess | _: ReplicationUpdateFailure ⇒
       // ReplicationUpdateFailure, will eventually be replicated

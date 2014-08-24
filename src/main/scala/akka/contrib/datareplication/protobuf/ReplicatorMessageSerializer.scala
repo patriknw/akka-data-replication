@@ -138,8 +138,7 @@ class ReplicatorMessageSerializer(val system: ExtendedActorSystem) extends Seria
   private def getSuccessToProto(getSuccess: GetSuccess): dm.GetSuccess = {
     val b = dm.GetSuccess.newBuilder().
       setKey(getSuccess.key).
-      setData(otherMessageToProto(getSuccess.data)).
-      setSeqNo(getSuccess.seqNo)
+      setData(otherMessageToProto(getSuccess.data))
 
     getSuccess.request.foreach(o ⇒ b.setRequest(otherMessageToProto(o)))
     b.build()
@@ -149,7 +148,7 @@ class ReplicatorMessageSerializer(val system: ExtendedActorSystem) extends Seria
     val getSuccess = dm.GetSuccess.parseFrom(bytes)
     val request = if (getSuccess.hasRequest()) Some(otherMessageFromProto(getSuccess.getRequest)) else None
     val data = otherMessageFromProto(getSuccess.getData).asInstanceOf[ReplicatedData]
-    GetSuccess(getSuccess.getKey, data, getSuccess.getSeqNo, request)
+    GetSuccess(getSuccess.getKey, data, request)
   }
 
   private def notFoundToProto(notFound: NotFound): dm.NotFound = {
