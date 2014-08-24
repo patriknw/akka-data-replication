@@ -53,7 +53,7 @@ case class ORMap(
   /**
    * Adds an entry to the map
    */
-  def :+(entry: (String, ReplicatedData))(implicit node: Cluster): ORMap = {
+  def +(entry: (String, ReplicatedData))(implicit node: Cluster): ORMap = {
     val (key, value) = entry
     put(node, key, value)
   }
@@ -72,7 +72,7 @@ case class ORMap(
   /**
    * Removes an entry from the map.
    */
-  def :-(key: String)(implicit node: Cluster): ORMap = remove(node, key)
+  def -(key: String)(implicit node: Cluster): ORMap = remove(node, key)
 
   /**
    * Removes an entry from the map.

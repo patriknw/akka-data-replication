@@ -80,7 +80,7 @@ class ShoppingCart(userId: String) extends Actor with Stash {
       replicator ! Update(DataKey, newData, seqNo, WriteQuorum, timeout)
 
     case _: NotFound ⇒
-      val data = LWWMap() :+ (item.productId -> item)
+      val data = LWWMap() + (item.productId -> item)
       replicator ! Update(DataKey, data, 0, WriteQuorum, timeout)
 
     case _: GetFailure ⇒
@@ -118,7 +118,7 @@ class ShoppingCart(userId: String) extends Actor with Stash {
   def removeItemInProgress(productId: String): Receive = {
 
     case GetSuccess(_, data: LWWMap, seqNo, _) ⇒
-      val newData = data :- productId
+      val newData = data - productId
       replicator ! Update(DataKey, newData, seqNo, WriteQuorum, timeout)
 
     case _: GetFailure ⇒
@@ -130,7 +130,7 @@ class ShoppingCart(userId: String) extends Actor with Stash {
 
     case WrongSeqNo(_, data: LWWMap, seqNo, currentSeqNo, _) ⇒
       // try again with currentSeqNo
-      val newData = data :- productId
+      val newData = data - productId
       replicator ! Update(DataKey, newData, currentSeqNo, WriteQuorum, timeout)
 
     case _: UpdateSuccess | _: ReplicationUpdateFailure ⇒
@@ -143,8 +143,8 @@ class ShoppingCart(userId: String) extends Actor with Stash {
   def update(data: LWWMap, item: LineItem): LWWMap =
     data.get(item.productId) match {
       case Some(LineItem(_, _, existingQuantity)) ⇒
-        data :+ (item.productId -> item.copy(quantity = existingQuantity + item.quantity))
-      case None ⇒ data :+ (item.productId -> item)
+        data + (item.productId -> item.copy(quantity = existingQuantity + item.quantity))
+      case None ⇒ data + (item.productId -> item)
       case _    ⇒ throw new IllegalStateException
     }
 

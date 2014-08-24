@@ -41,7 +41,7 @@ case class PNCounter(
    * Increment the counter with the delta specified.
    * If the delta is negative then it will decrement instead of increment.
    */
-  def :+(delta: Long)(implicit node: Cluster): PNCounter = increment(node, delta)
+  def +(delta: Long)(implicit node: Cluster): PNCounter = increment(node, delta)
 
   /**
    * Increment the counter with the delta specified.
@@ -54,7 +54,7 @@ case class PNCounter(
    * Decrement the counter with the delta specified.
    * If the delta is negative then it will increment instead of decrement.
    */
-  def :-(delta: Long)(implicit node: Cluster): PNCounter = decrement(node, delta)
+  def -(delta: Long)(implicit node: Cluster): PNCounter = decrement(node, delta)
 
   /**
    * Decrement the counter with the delta specified.

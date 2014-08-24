@@ -45,7 +45,7 @@ case class GSet(elements: Set[Any]) extends ReplicatedData with ReplicatedDataSe
   /**
    * Adds an element to the set
    */
-  def :+(element: Any): GSet = add(element)
+  def +(element: Any): GSet = add(element)
 
   /**
    * Adds an element to the set

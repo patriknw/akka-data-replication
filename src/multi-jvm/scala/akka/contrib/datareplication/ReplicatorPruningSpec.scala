@@ -75,11 +75,11 @@ class ReplicatorPruningSpec extends MultiNodeSpec(ReplicatorPruningSpec) with ST
         member.uniqueAddress
       }
 
-      val c3 = GCounter() :+ 3
+      val c3 = GCounter() + 3
       replicator ! Update("A", c3, 0, WriteAll, timeout)
       expectMsg(UpdateSuccess("A", 0, None))
 
-      val s = ORSet() :+ "a" :+ "b" :+ "c"
+      val s = ORSet() + "a" + "b" + "c"
       replicator ! Update("B", s, 0, WriteAll, timeout)
       expectMsg(UpdateSuccess("B", 0, None))
 
@@ -155,7 +155,7 @@ class ReplicatorPruningSpec extends MultiNodeSpec(ReplicatorPruningSpec) with ST
       // on one of the nodes the seqNo has been updated, 
       // client might think the expected seqNo is 1 and then Update should reply with WrongSeqNo
       def updateAfterPruning(expectedValue: Int): Unit = {
-        val c = oldCounter :+ 1
+        val c = oldCounter + 1
         replicator ! Update("A", c, seqNo = 1, WriteAll, timeout, None)
         expectMsgPF() {
           case UpdateSuccess("A", 1, _) ⇒
@@ -163,7 +163,7 @@ class ReplicatorPruningSpec extends MultiNodeSpec(ReplicatorPruningSpec) with ST
             val retrieved = expectMsgType[GetSuccess].data.asInstanceOf[GCounter]
             retrieved.value should be(expectedValue)
           case WrongSeqNo("A", currentCrdt: GCounter, 1, currentSeqNo, _) ⇒
-            replicator ! Update("A", currentCrdt :+ 1, seqNo = currentSeqNo, WriteAll, timeout, None)
+            replicator ! Update("A", currentCrdt + 1, seqNo = currentSeqNo, WriteAll, timeout, None)
             expectMsg(UpdateSuccess("A", currentSeqNo, None))
             replicator ! Get("A", ReadOne, timeout)
             val retrieved = expectMsgType[GetSuccess].data.asInstanceOf[GCounter]

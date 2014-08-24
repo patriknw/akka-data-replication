@@ -17,36 +17,36 @@ class ORMapSpec extends WordSpec with Matchers {
   "A ORMap" must {
 
     "be able to add entries" in {
-      val m = ORMap().put(node1, "a", GSet() :+ "A").put(node1, "b", GSet() :+ "B")
+      val m = ORMap().put(node1, "a", GSet() + "A").put(node1, "b", GSet() + "B")
       val GSet(a) = m.entries("a")
       a should be(Set("A"))
       val GSet(b) = m.entries("b")
       b should be(Set("B"))
 
-      val m2 = m.put(node1, "a", GSet() :+ "C")
+      val m2 = m.put(node1, "a", GSet() + "C")
       val GSet(a2) = m2.entries("a")
       a2 should be(Set("C"))
 
     }
 
     "be able to remove entry" in {
-      val m = ORMap().put(node1, "a", GSet() :+ "A").put(node1, "b", GSet() :+ "B").remove(node1, "a")
+      val m = ORMap().put(node1, "a", GSet() + "A").put(node1, "b", GSet() + "B").remove(node1, "a")
       m.entries.keySet should not contain ("a")
       m.entries.keySet should contain("b")
     }
 
     "be able to add removed" in {
-      val m = ORMap().put(node1, "a", GSet() :+ "A").put(node1, "b", GSet() :+ "B").remove(node1, "a")
+      val m = ORMap().put(node1, "a", GSet() + "A").put(node1, "b", GSet() + "B").remove(node1, "a")
       m.entries.keySet should not contain ("a")
       m.entries.keySet should contain("b")
-      val m2 = m.put(node1, "a", GSet() :+ "C")
+      val m2 = m.put(node1, "a", GSet() + "C")
       m2.entries.keySet should contain("a")
       m2.entries.keySet should contain("b")
     }
 
     "be able to have its entries correctly merged with another ORMap with other entries" in {
-      val m1 = ORMap().put(node1, "a", GSet() :+ "A").put(node1, "b", GSet() :+ "B")
-      val m2 = ORMap().put(node2, "c", GSet() :+ "C")
+      val m1 = ORMap().put(node1, "a", GSet() + "A").put(node1, "b", GSet() + "B")
+      val m2 = ORMap().put(node2, "c", GSet() + "C")
 
       // merge both ways
       val merged1 = m1 merge m2
@@ -61,10 +61,10 @@ class ORMapSpec extends WordSpec with Matchers {
     }
 
     "be able to have its entries correctly merged with another ORMap with overlapping entries" in {
-      val m1 = ORMap().put(node1, "a", GSet() :+ "A1").put(node1, "b", GSet() :+ "B1").
-        remove(node1, "a").put(node1, "d", GSet() :+ "D1")
-      val m2 = ORMap().put(node2, "c", GSet() :+ "C2").put(node2, "a", GSet() :+ "A2").
-        put(node2, "b", GSet() :+ "B2").remove(node2, "b").put(node2, "d", GSet() :+ "D2")
+      val m1 = ORMap().put(node1, "a", GSet() + "A1").put(node1, "b", GSet() + "B1").
+        remove(node1, "a").put(node1, "d", GSet() + "D1")
+      val m2 = ORMap().put(node2, "c", GSet() + "C2").put(node2, "a", GSet() + "A2").
+        put(node2, "b", GSet() + "B2").remove(node2, "b").put(node2, "d", GSet() + "D2")
 
       // merge both ways
       val merged1 = m1 merge m2

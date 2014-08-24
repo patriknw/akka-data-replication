@@ -41,7 +41,7 @@ case class GCounter(
    * Increment the counter with the delta specified.
    * The delta must be zero or positive.
    */
-  def :+(delta: Long)(implicit node: Cluster): GCounter = increment(node, delta)
+  def +(delta: Long)(implicit node: Cluster): GCounter = increment(node, delta)
 
   /**
    * Increment the counter with the delta specified.
