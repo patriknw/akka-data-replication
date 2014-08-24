@@ -56,6 +56,7 @@ object DataBot {
 
 }
 
+// This sample is used in the README.md (remember to copy when it is changed)
 class DataBot extends Actor with ActorLogging {
   import DataBot._
   import Replicator._
@@ -84,6 +85,8 @@ class DataBot extends Actor with ActorLogging {
         log.info("Removing: {}", s)
         replicator ! Update("key", newData)
       }
+
+    case _: UpdateResponse => // ignore  
 
     case Changed("key", data: ORSet) =>
       current = data

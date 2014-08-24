@@ -142,6 +142,10 @@ object Replicator {
      */
     def apply(key: String): Get = Get(key, ReadOne, Duration.Zero, None)
   }
+  /**
+   * Send this message to the local `Replicator` to retrieve a data value for the
+   * given `key`. The `Replicator` will reply with one of the [[GetResponse]] messages.
+   */
   case class Get(key: String, consistency: ReadConsistency, timeout: FiniteDuration, request: Option[Any] = None)
     extends ReplicatorMessage {
     /**
@@ -149,12 +153,13 @@ object Replicator {
      */
     def this(key: String) = this(key, ReadOne, Duration.Zero, None)
   }
+  sealed trait GetResponse
   case class GetSuccess(key: String, data: ReplicatedData, request: Option[Any])
-    extends ReplicatorMessage
+    extends ReplicatorMessage with GetResponse
   case class NotFound(key: String, request: Option[Any])
-    extends ReplicatorMessage
+    extends ReplicatorMessage with GetResponse
   case class GetFailure(key: String, request: Option[Any])
-    extends ReplicatorMessage
+    extends ReplicatorMessage with GetResponse
 
   case class Subscribe(key: String, subscriber: ActorRef)
     extends ReplicatorMessage
@@ -178,6 +183,10 @@ object Replicator {
     def apply(key: String, data: ReplicatedData, request: Option[Any]): Update =
       Update(key, data, WriteOne, Duration.Zero, request)
   }
+  /**
+   * Send this message to the local `Replicator` to update a data value for the
+   * given `key`. The `Replicator` will reply with one of the [[UpdateResponse]] messages.
+   */
   case class Update(key: String, data: ReplicatedData, consistency: WriteConsistency,
                     timeout: FiniteDuration, request: Option[Any] = None) {
     /**
@@ -193,8 +202,9 @@ object Replicator {
     def this(key: String, data: ReplicatedData, request: Option[Any]) =
       this(key, data, WriteOne, Duration.Zero, request)
   }
-  case class UpdateSuccess(key: String, request: Option[Any])
-  sealed trait UpdateFailure {
+  sealed trait UpdateResponse
+  case class UpdateSuccess(key: String, request: Option[Any]) extends UpdateResponse
+  sealed trait UpdateFailure extends UpdateResponse {
     def key: String
     def request: Option[Any]
   }
@@ -211,6 +221,10 @@ object Replicator {
      */
     def apply(key: String): Delete = Delete(key, WriteOne, Duration.Zero)
   }
+  /**
+   * Send this message to the local `Replicator` to delete a data value for the
+   * given `key`. The `Replicator` will reply with one of the [[DeleteResponse]] messages.
+   */
   case class Delete(key: String, consistency: WriteConsistency, timeout: FiniteDuration) {
     /**
      * Java API: `Delete` value of local `Replicator`, i.e. `WriteOne`
@@ -218,10 +232,11 @@ object Replicator {
      */
     def this(key: String) = this(key, WriteOne, Duration.Zero)
   }
-  case class DeleteSuccess(key: String)
-  case class ReplicationDeleteFailure(key: String)
+  sealed trait DeleteResponse
+  case class DeleteSuccess(key: String) extends DeleteResponse
+  case class ReplicationDeleteFailure(key: String) extends DeleteResponse
   case class DataDeleted(key: String)
-    extends RuntimeException with NoStackTrace
+    extends RuntimeException with NoStackTrace with DeleteResponse
 
   /**
    * Marker trait for remote messages serialized by

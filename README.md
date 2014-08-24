@@ -66,6 +66,8 @@ class DataBot extends Actor with ActorLogging {
         replicator ! Update("key", newData)
       }
 
+    case _: UpdateResponse => // ignore  
+
     case Changed("key", data: ORSet) =>
       current = data
       log.info("Current elements: {}", data.value)
