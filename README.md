@@ -49,7 +49,6 @@ class DataBot extends Actor with ActorLogging {
 
   replicator ! Subscribe("key", self)
 
-  var seqNo = 0L
   var current = ORSet()
 
   def receive = {
@@ -59,14 +58,13 @@ class DataBot extends Actor with ActorLogging {
         // add
         val newData = current + s
         log.info("Adding: {}", s)
-        replicator ! Update("key", newData, seqNo)
+        replicator ! Update("key", newData)
       } else {
         // remove
         val newData = current - s
         log.info("Removing: {}", s)
-        replicator ! Update("key", newData, seqNo)
+        replicator ! Update("key", newData)
       }
-      seqNo += 1
 
     case Changed("key", data: ORSet) =>
       current = data
@@ -74,6 +72,7 @@ class DataBot extends Actor with ActorLogging {
   }
 
   override def postStop(): Unit = tickTask.cancel()
+
 }
 ```
     
