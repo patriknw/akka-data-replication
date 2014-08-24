@@ -82,7 +82,7 @@ The full source code for this sample is in
 [DataBot.scala](https://github.com/patriknw/akka-datareplication/blob/v0.3/src/test/scala/akka/contrib/datareplication/sample/DataBot.scala).   
 
 More detailed documentation can be found in the
-[ScalaDoc](http://dl.bintray.com/patriknw/maven/com/github/patriknw/akka-datareplication_2.10/0.3/#akka-data-replication_2.10-0.3-javadoc.jar)
+[ScalaDoc](http://dl.bintray.com/patriknw/maven/com/github/patriknw/akka-data-replication_2.10/0.3/akka-data-replication_2.10-0.3-javadoc.jar)
 of `Replicator` and linked classes.
 
 Two other examples:
