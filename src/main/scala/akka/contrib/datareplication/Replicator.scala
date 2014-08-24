@@ -149,7 +149,7 @@ object Replicator {
      */
     def this(key: String) = this(key, ReadOne, Duration.Zero, None)
   }
-  case class GetSuccess(key: String, data: ReplicatedData, seqNo: Long, request: Option[Any])
+  case class GetSuccess(key: String, data: ReplicatedData, request: Option[Any])
     extends ReplicatorMessage
   case class NotFound(key: String, request: Option[Any])
     extends ReplicatorMessage
@@ -168,43 +168,40 @@ object Replicator {
      * `Update` value of local `Replicator`, i.e. `WriteOne`
      * consistency.
      */
-    def apply(key: String, data: ReplicatedData, seqNo: Long): Update =
-      Update(key, data, seqNo, WriteOne, Duration.Zero, None)
+    def apply(key: String, data: ReplicatedData): Update =
+      Update(key, data, WriteOne, Duration.Zero, None)
 
     /**
      * `Update` value of local `Replicator`, i.e. `WriteOne`
      * consistency.
      */
-    def apply(key: String, data: ReplicatedData, seqNo: Long, request: Option[Any]): Update =
-      Update(key, data, seqNo, WriteOne, Duration.Zero, request)
+    def apply(key: String, data: ReplicatedData, request: Option[Any]): Update =
+      Update(key, data, WriteOne, Duration.Zero, request)
   }
-  case class Update(key: String, data: ReplicatedData, seqNo: Long,
-                    consistency: WriteConsistency, timeout: FiniteDuration, request: Option[Any] = None) {
+  case class Update(key: String, data: ReplicatedData, consistency: WriteConsistency,
+                    timeout: FiniteDuration, request: Option[Any] = None) {
     /**
      * Java API `Update` value of local `Replicator`, i.e. `WriteOne` consistency.
      */
-    def this(key: String, data: ReplicatedData, seqNo: Long) =
-      this(key, data, seqNo, WriteOne, Duration.Zero, None)
+    def this(key: String, data: ReplicatedData) =
+      this(key, data, WriteOne, Duration.Zero, None)
 
     /**
      * Java API: `Update` value of local `Replicator`, i.e. `WriteOne` consistency.
      * Use `Option.apply` to create the `Option`.
      */
-    def this(key: String, data: ReplicatedData, seqNo: Long, request: Option[Any]) =
-      this(key, data, seqNo, WriteOne, Duration.Zero, request)
+    def this(key: String, data: ReplicatedData, request: Option[Any]) =
+      this(key, data, WriteOne, Duration.Zero, request)
   }
-  case class UpdateSuccess(key: String, seqNo: Any, request: Option[Any])
+  case class UpdateSuccess(key: String, request: Option[Any])
   sealed trait UpdateFailure {
     def key: String
-    def seqNo: Long
     def request: Option[Any]
   }
-  case class ReplicationUpdateFailure(key: String, seqNo: Long, request: Option[Any]) extends UpdateFailure
-  case class ConflictingType(key: String, seqNo: Long, errorMessage: String, request: Option[Any])
+  case class ReplicationUpdateFailure(key: String, request: Option[Any]) extends UpdateFailure
+  case class ConflictingType(key: String, errorMessage: String, request: Option[Any])
     extends RuntimeException with NoStackTrace with UpdateFailure
-  case class WrongSeqNo(key: String, currentData: ReplicatedData, seqNo: Long, currentSeqNo: Long,
-                        request: Option[Any]) extends RuntimeException with NoStackTrace with UpdateFailure
-  case class InvalidUsage(key: String, seqNo: Long, errorMessage: String, request: Option[Any])
+  case class InvalidUsage(key: String, errorMessage: String, request: Option[Any])
     extends RuntimeException with NoStackTrace with UpdateFailure
 
   object Delete {
@@ -388,24 +385,13 @@ object Replicator {
  * nodes with the gossip protocol. The data will always converge to the the same value no
  * matter how many times you retry the `Update`.
  *
- * In the `Update` message you must pass an expected sequence number for optimistic concurrency
- * control of local updates. It starts at 0 and is incremented by one for each local update. Each
- * data `key` has its own sequence. If the `seqNo` in the `Update` does not match the current sequence
- * number of the `Replicator` the update will be discarded and a [[Replicator.WrongSeqNo]] message
- * is sent back. The reason for requiring a sequence number is to be able to detect concurrent
- * (conflicting) updates from the local node.
- * For example two different actors running in the same `ActorSystem` changing the same data
- * item and sending the updates to the `Replicator` independent of each other. Normally you would
- * serialize the updates via one actor, and then you can maintain a sequence number counter
- * in that actor. Even in that case there is a possibility that you will receive
- * [[Replicator.WrongSeqNo]]. It can happen when the `Replicator` itself modifies the
- * data when pruning history belonging to removed cluster nodes (see below).
+ * Make sure that updates from one local `ActorSystem` is performed by one single actor, otherwise
+ * concurrent updates to the same `key` will overwrite each others values.
  *
  * In the `Update` message you can pass an optional request context, which the `Replicator`
  * does not care about, but is included in the reply messages. This is a convenient
  * way to pass contextual information (e.g. original sender) without having to use `ask`
- * or local correlation data structures. For example the original command can be passed
- * in a `Update` messages, and retried in case of `WrongSeqNo` failure.
+ * or local correlation data structures.
  *
  * To retrieve the current value of a data you send [[Replicator.Get]] message to the
  * `Replicator`. You supply a consistency level which has the following meaning:
@@ -453,6 +439,8 @@ object Replicator {
  * data entries because that reduces the replication overhead when new nodes join the cluster.
  * Subsequent `Delete`, `Update` and `Get` requests will be replied with [[Replicator.DataDeleted]].
  * Subscribers will receive [[Replicator.DataDeleted]].
+ *
+ * <b>The following feature is currently disabled, see issue #17.</b>
  *
  * One thing that can be problematic with CRDTs is that some data types accumulate history (garbage).
  * For example a `GCounter` keeps track of one counter per node. If a `GCounter` has been updated
@@ -506,7 +494,8 @@ class Replicator(
   //Start periodic gossip to random nodes in cluster
   import context.dispatcher
   val gossipTask = context.system.scheduler.schedule(gossipInterval, gossipInterval, self, GossipTick)
-  val pruningTask = context.system.scheduler.schedule(gossipInterval, gossipInterval, self, RemovedNodePruningTick)
+  // FIXME RemovedNodePruning disabled, see issue #17 
+  //  val pruningTask = context.system.scheduler.schedule(pruningInterval, pruningInterval, self, RemovedNodePruningTick)
   val clockTask = context.system.scheduler.schedule(gossipInterval, gossipInterval, self, ClockTick)
 
   val serializer = SerializationExtension(context.system).serializerFor(classOf[DataEnvelope])
@@ -530,7 +519,6 @@ class Replicator(
   var unreachable = Set.empty[Address]
 
   var dataEntries = Map.empty[String, (DataEnvelope, Digest)]
-  var seqNumbers = Map.empty[String, Long].withDefaultValue(0L)
 
   var subscribers = Map.empty[String, Set[ActorRef]]
 
@@ -543,37 +531,38 @@ class Replicator(
   override def postStop(): Unit = {
     cluster unsubscribe self
     gossipTask.cancel()
-    pruningTask.cancel()
+    // FIXME RemovedNodePruning disabled, see issue #17
+    //    pruningTask.cancel()
     clockTask.cancel()
   }
 
   def matchingRole(m: Member): Boolean = role.forall(m.hasRole)
 
   def receive = {
-    case Get(key, consistency, timeout, req) ⇒ receiveGet(key, consistency, timeout, req)
-    case Read(key) ⇒ receiveRead(key)
-    case Update(key, _, seqNo, _, _, req) if !isLocalSender ⇒ receiveInvalidUpdate(key, seqNo, req)
-    case Update(key, data, seqNo, consistency, timeout, req) ⇒ receiveUpdate(key, data, seqNo, consistency, timeout, req)
-    case Write(key, envelope) ⇒ receiveWrite(key, envelope)
-    case ReadRepair(key, envelope) ⇒ write(key, envelope)
-    case GetKeys ⇒ receiveGetKeys()
-    case Delete(key, consistency, timeout) ⇒ receiveDelete(key, consistency, timeout)
-    case GossipTick ⇒ receiveGossipTick()
-    case Status(otherDigests) ⇒ receiveStatus(otherDigests)
-    case Gossip(updatedData) ⇒ receiveGossip(updatedData)
-    case Subscribe(key, subscriber) ⇒ receiveSubscribe(key, subscriber)
-    case Unsubscribe(key, subscriber) ⇒ receiveUnsubscribe(key, subscriber)
-    case Terminated(ref) ⇒ receiveTerminated(ref)
-    case MemberUp(m) ⇒ receiveMemberUp(m)
-    case MemberRemoved(m, _) ⇒ receiveMemberRemoved(m)
-    case _: MemberEvent ⇒ // not of interest
-    case UnreachableMember(m) ⇒ receiveUnreachable(m)
-    case ReachableMember(m) ⇒ receiveReachable(m)
-    case LeaderChanged(leader) ⇒ receiveLeaderChanged(leader, None)
-    case RoleLeaderChanged(role, leader) ⇒ receiveLeaderChanged(leader, Some(role))
-    case ClockTick ⇒ receiveClockTick()
-    case RemovedNodePruningTick ⇒ receiveRemovedNodePruningTick()
-    case GetNodeCount ⇒ receiveGetNodeCount()
+    case Get(key, consistency, timeout, req)          ⇒ receiveGet(key, consistency, timeout, req)
+    case Read(key)                                    ⇒ receiveRead(key)
+    case Update(key, _, _, _, req) if !isLocalSender  ⇒ receiveInvalidUpdate(key, req)
+    case Update(key, data, consistency, timeout, req) ⇒ receiveUpdate(key, data, consistency, timeout, req)
+    case Write(key, envelope)                         ⇒ receiveWrite(key, envelope)
+    case ReadRepair(key, envelope)                    ⇒ write(key, envelope)
+    case GetKeys                                      ⇒ receiveGetKeys()
+    case Delete(key, consistency, timeout)            ⇒ receiveDelete(key, consistency, timeout)
+    case GossipTick                                   ⇒ receiveGossipTick()
+    case Status(otherDigests)                         ⇒ receiveStatus(otherDigests)
+    case Gossip(updatedData)                          ⇒ receiveGossip(updatedData)
+    case Subscribe(key, subscriber)                   ⇒ receiveSubscribe(key, subscriber)
+    case Unsubscribe(key, subscriber)                 ⇒ receiveUnsubscribe(key, subscriber)
+    case Terminated(ref)                              ⇒ receiveTerminated(ref)
+    case MemberUp(m)                                  ⇒ receiveMemberUp(m)
+    case MemberRemoved(m, _)                          ⇒ receiveMemberRemoved(m)
+    case _: MemberEvent                               ⇒ // not of interest
+    case UnreachableMember(m)                         ⇒ receiveUnreachable(m)
+    case ReachableMember(m)                           ⇒ receiveReachable(m)
+    case LeaderChanged(leader)                        ⇒ receiveLeaderChanged(leader, None)
+    case RoleLeaderChanged(role, leader)              ⇒ receiveLeaderChanged(leader, Some(role))
+    case ClockTick                                    ⇒ receiveClockTick()
+    case RemovedNodePruningTick                       ⇒ receiveRemovedNodePruningTick()
+    case GetNodeCount                                 ⇒ receiveGetNodeCount()
   }
 
   def receiveGet(key: String, consistency: ReadConsistency, timeout: FiniteDuration, req: Option[Any]): Unit = {
@@ -581,13 +570,12 @@ class Replicator(
     if (consistency == ReadOne) {
       val reply = localValue match {
         case Some(DataEnvelope(DeletedData, _)) ⇒ DataDeleted(key)
-        case Some(DataEnvelope(data, _))        ⇒ GetSuccess(key, data, seqNumbers(key), req)
+        case Some(DataEnvelope(data, _))        ⇒ GetSuccess(key, data, req)
         case None                               ⇒ NotFound(key, req)
       }
       sender() ! reply
     } else
-      context.actorOf(Props(classOf[ReadAggregator], key, consistency, timeout, req, nodes, localValue,
-        seqNumbers.get(key), sender()))
+      context.actorOf(Props(classOf[ReadAggregator], key, consistency, timeout, req, nodes, localValue, sender()))
   }
 
   def receiveRead(key: String): Unit = {
@@ -596,47 +584,41 @@ class Replicator(
 
   def isLocalSender: Boolean = !sender().path.address.hasGlobalScope
 
-  def receiveInvalidUpdate(key: String, seqNo: Long, req: Option[Any]): Unit = {
-    sender() ! InvalidUsage(key, seqNo,
+  def receiveInvalidUpdate(key: String, req: Option[Any]): Unit = {
+    sender() ! InvalidUsage(key,
       "Replicator Update should only be used from an actor running in same local ActorSystem", req)
   }
 
-  def receiveUpdate(key: String, data: ReplicatedData, seqNo: Long, consistency: WriteConsistency,
+  def receiveUpdate(key: String, data: ReplicatedData, consistency: WriteConsistency,
                     timeout: FiniteDuration, req: Option[Any]): Unit = {
     if (log.isDebugEnabled) log.debug("Received Update {} existing {}", data, getData(key))
-    update(key, data, seqNo, req) match {
+    update(key, data, req) match {
       case Success(merged) ⇒
         if (consistency == WriteOne)
-          sender() ! UpdateSuccess(key, seqNo, req)
+          sender() ! UpdateSuccess(key, req)
         else
-          context.actorOf(Props(classOf[WriteAggregator], key, merged, seqNo, consistency, timeout, req,
+          context.actorOf(Props(classOf[WriteAggregator], key, merged, consistency, timeout, req,
             nodes, sender()))
       case Failure(e) ⇒
         sender() ! e
     }
   }
 
-  def update(key: String, data: ReplicatedData, seqNo: Long, req: Option[Any]): Try[DataEnvelope] = {
+  def update(key: String, data: ReplicatedData, req: Option[Any]): Try[DataEnvelope] = {
     getData(key) match {
       case Some(DataEnvelope(DeletedData, _)) ⇒
         Failure(DataDeleted(key))
       case Some(envelope @ DataEnvelope(existing, pruning)) ⇒
         if (existing.getClass == data.getClass || data == DeletedData) {
-          val currentSeqNo = seqNumbers(key)
-          if (currentSeqNo == seqNo) {
-            seqNumbers = seqNumbers.updated(key, currentSeqNo + 1)
-            val merged = envelope.merge(pruningCleanupTombstoned(data))
-            setData(key, merged)
-            Success(merged)
-          } else
-            Failure(WrongSeqNo(key, existing, seqNo, currentSeqNo, req))
+          val merged = envelope.merge(pruningCleanupTombstoned(data))
+          setData(key, merged)
+          Success(merged)
         } else {
           val errMsg = s"Wrong type for updating [$key], existing type [${existing.getClass.getName}], got [${data.getClass.getName}]"
           log.warning(errMsg)
-          Failure(ConflictingType(key, seqNo, errMsg, req))
+          Failure(ConflictingType(key, errMsg, req))
         }
       case None ⇒
-        seqNumbers = seqNumbers.updated(key, 1L)
         val envelope = DataEnvelope(pruningCleanupTombstoned(data))
         setData(key, envelope)
         Success(envelope)
@@ -670,13 +652,12 @@ class Replicator(
 
   def receiveDelete(key: String, consistency: WriteConsistency,
                     timeout: FiniteDuration): Unit = {
-    val seqNo = seqNumbers.getOrElse(key, 0L)
-    update(key, DeletedData, seqNo, None) match {
+    update(key, DeletedData, None) match {
       case Success(merged) ⇒
         if (consistency == WriteOne)
           sender() ! DeleteSuccess(key)
         else
-          context.actorOf(Props(classOf[WriteAggregator], key, merged, seqNo, consistency, timeout, None,
+          context.actorOf(Props(classOf[WriteAggregator], key, merged, consistency, timeout, None,
             nodes, sender()))
       case Failure(e) ⇒
         sender() ! e
@@ -843,7 +824,6 @@ class Replicator(
         val newEnvelope = envelope.initRemovedNodePruning(removed, selfUniqueAddress)
         log.debug("Initiated pruning of [{}] for data key [{}]", removed, key)
         setData(key, newEnvelope)
-        // no need to update seqNo here since we have not touched the data
       }
 
       envelope.data match {
@@ -868,7 +848,6 @@ class Replicator(
             pruningPerformed = pruningPerformed.updated(removed, allReachableClockTime)
             log.debug("Perform pruning of [{}] from [{}] to [{}]", key, removed, selfUniqueAddress)
             setData(key, newEnvelope)
-            seqNumbers = seqNumbers.updated(key, seqNumbers(key) + 1)
           case _ ⇒
         }
       case _ ⇒ // deleted, or pruning not needed
@@ -978,7 +957,6 @@ private[akka] abstract class ReadWriteAggregator extends Actor {
 private[akka] class WriteAggregator(
   key: String,
   envelope: Replicator.Internal.DataEnvelope,
-  seqNo: Long,
   consistency: Replicator.WriteConsistency,
   override val timeout: FiniteDuration,
   req: Option[Any],
@@ -1023,11 +1001,11 @@ private[akka] class WriteAggregator(
     if (ok && envelope.data == DeletedData)
       replyTo.tell(DeleteSuccess(key), context.parent)
     else if (ok)
-      replyTo.tell(UpdateSuccess(key, seqNo, req), context.parent)
+      replyTo.tell(UpdateSuccess(key, req), context.parent)
     else if (envelope.data == DeletedData)
       replyTo.tell(ReplicationDeleteFailure(key), context.parent)
     else
-      replyTo.tell(ReplicationUpdateFailure(key, seqNo, req), context.parent)
+      replyTo.tell(ReplicationUpdateFailure(key, req), context.parent)
     becomeDone()
   }
 }
@@ -1042,7 +1020,6 @@ private[akka] class ReadAggregator(
   req: Option[Any],
   override val nodes: Set[Address],
   localValue: Option[Replicator.Internal.DataEnvelope],
-  localSeqNo: Option[Long],
   replyTo: ActorRef) extends ReadWriteAggregator {
 
   import Replicator._
@@ -1091,7 +1068,7 @@ private[akka] class ReadAggregator(
       case (true, Some(envelope)) ⇒
         context.parent ! ReadRepair(key, envelope)
         if (envelope.data == DeletedData) DataDeleted(key)
-        else GetSuccess(key, envelope.data, localSeqNo.getOrElse(0L), req)
+        else GetSuccess(key, envelope.data, req)
       case (true, None) ⇒ NotFound(key, req)
       case (false, _)   ⇒ GetFailure(key, req)
     }

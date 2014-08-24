@@ -901,16 +901,6 @@ public final class ReplicatorMessages {
      */
     akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.OtherMessageOrBuilder getDataOrBuilder();
 
-    // required int64 seqNo = 3;
-    /**
-     * <code>required int64 seqNo = 3;</code>
-     */
-    boolean hasSeqNo();
-    /**
-     * <code>required int64 seqNo = 3;</code>
-     */
-    long getSeqNo();
-
     // optional .akka.contrib.datareplication.OtherMessage request = 4;
     /**
      * <code>optional .akka.contrib.datareplication.OtherMessage request = 4;</code>
@@ -994,14 +984,9 @@ public final class ReplicatorMessages {
               bitField0_ |= 0x00000002;
               break;
             }
-            case 24: {
-              bitField0_ |= 0x00000004;
-              seqNo_ = input.readInt64();
-              break;
-            }
             case 34: {
               akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.OtherMessage.Builder subBuilder = null;
-              if (((bitField0_ & 0x00000008) == 0x00000008)) {
+              if (((bitField0_ & 0x00000004) == 0x00000004)) {
                 subBuilder = request_.toBuilder();
               }
               request_ = input.readMessage(akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.OtherMessage.PARSER, extensionRegistry);
@@ -1009,7 +994,7 @@ public final class ReplicatorMessages {
                 subBuilder.mergeFrom(request_);
                 request_ = subBuilder.buildPartial();
               }
-              bitField0_ |= 0x00000008;
+              bitField0_ |= 0x00000004;
               break;
             }
           }
@@ -1117,22 +1102,6 @@ public final class ReplicatorMessages {
       return data_;
     }
 
-    // required int64 seqNo = 3;
-    public static final int SEQNO_FIELD_NUMBER = 3;
-    private long seqNo_;
-    /**
-     * <code>required int64 seqNo = 3;</code>
-     */
-    public boolean hasSeqNo() {
-      return ((bitField0_ & 0x00000004) == 0x00000004);
-    }
-    /**
-     * <code>required int64 seqNo = 3;</code>
-     */
-    public long getSeqNo() {
-      return seqNo_;
-    }
-
     // optional .akka.contrib.datareplication.OtherMessage request = 4;
     public static final int REQUEST_FIELD_NUMBER = 4;
     private akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.OtherMessage request_;
@@ -1140,7 +1109,7 @@ public final class ReplicatorMessages {
      * <code>optional .akka.contrib.datareplication.OtherMessage request = 4;</code>
      */
     public boolean hasRequest() {
-      return ((bitField0_ & 0x00000008) == 0x00000008);
+      return ((bitField0_ & 0x00000004) == 0x00000004);
     }
     /**
      * <code>optional .akka.contrib.datareplication.OtherMessage request = 4;</code>
@@ -1158,7 +1127,6 @@ public final class ReplicatorMessages {
     private void initFields() {
       key_ = "";
       data_ = akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.OtherMessage.getDefaultInstance();
-      seqNo_ = 0L;
       request_ = akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.OtherMessage.getDefaultInstance();
     }
     private byte memoizedIsInitialized = -1;
@@ -1171,10 +1139,6 @@ public final class ReplicatorMessages {
         return false;
       }
       if (!hasData()) {
-        memoizedIsInitialized = 0;
-        return false;
-      }
-      if (!hasSeqNo()) {
         memoizedIsInitialized = 0;
         return false;
       }
@@ -1202,9 +1166,6 @@ public final class ReplicatorMessages {
         output.writeMessage(2, data_);
       }
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
-        output.writeInt64(3, seqNo_);
-      }
-      if (((bitField0_ & 0x00000008) == 0x00000008)) {
         output.writeMessage(4, request_);
       }
       getUnknownFields().writeTo(output);
@@ -1225,10 +1186,6 @@ public final class ReplicatorMessages {
           .computeMessageSize(2, data_);
       }
       if (((bitField0_ & 0x00000004) == 0x00000004)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeInt64Size(3, seqNo_);
-      }
-      if (((bitField0_ & 0x00000008) == 0x00000008)) {
         size += com.google.protobuf.CodedOutputStream
           .computeMessageSize(4, request_);
       }
@@ -1358,14 +1315,12 @@ public final class ReplicatorMessages {
           dataBuilder_.clear();
         }
         bitField0_ = (bitField0_ & ~0x00000002);
-        seqNo_ = 0L;
-        bitField0_ = (bitField0_ & ~0x00000004);
         if (requestBuilder_ == null) {
           request_ = akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.OtherMessage.getDefaultInstance();
         } else {
           requestBuilder_.clear();
         }
-        bitField0_ = (bitField0_ & ~0x00000008);
+        bitField0_ = (bitField0_ & ~0x00000004);
         return this;
       }
 
@@ -1409,10 +1364,6 @@ public final class ReplicatorMessages {
         if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
           to_bitField0_ |= 0x00000004;
         }
-        result.seqNo_ = seqNo_;
-        if (((from_bitField0_ & 0x00000008) == 0x00000008)) {
-          to_bitField0_ |= 0x00000008;
-        }
         if (requestBuilder_ == null) {
           result.request_ = request_;
         } else {
@@ -1442,9 +1393,6 @@ public final class ReplicatorMessages {
         if (other.hasData()) {
           mergeData(other.getData());
         }
-        if (other.hasSeqNo()) {
-          setSeqNo(other.getSeqNo());
-        }
         if (other.hasRequest()) {
           mergeRequest(other.getRequest());
         }
@@ -1458,10 +1406,6 @@ public final class ReplicatorMessages {
           return false;
         }
         if (!hasData()) {
-          
-          return false;
-        }
-        if (!hasSeqNo()) {
           
           return false;
         }
@@ -1688,39 +1632,6 @@ public final class ReplicatorMessages {
         return dataBuilder_;
       }
 
-      // required int64 seqNo = 3;
-      private long seqNo_ ;
-      /**
-       * <code>required int64 seqNo = 3;</code>
-       */
-      public boolean hasSeqNo() {
-        return ((bitField0_ & 0x00000004) == 0x00000004);
-      }
-      /**
-       * <code>required int64 seqNo = 3;</code>
-       */
-      public long getSeqNo() {
-        return seqNo_;
-      }
-      /**
-       * <code>required int64 seqNo = 3;</code>
-       */
-      public Builder setSeqNo(long value) {
-        bitField0_ |= 0x00000004;
-        seqNo_ = value;
-        onChanged();
-        return this;
-      }
-      /**
-       * <code>required int64 seqNo = 3;</code>
-       */
-      public Builder clearSeqNo() {
-        bitField0_ = (bitField0_ & ~0x00000004);
-        seqNo_ = 0L;
-        onChanged();
-        return this;
-      }
-
       // optional .akka.contrib.datareplication.OtherMessage request = 4;
       private akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.OtherMessage request_ = akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.OtherMessage.getDefaultInstance();
       private com.google.protobuf.SingleFieldBuilder<
@@ -1729,7 +1640,7 @@ public final class ReplicatorMessages {
        * <code>optional .akka.contrib.datareplication.OtherMessage request = 4;</code>
        */
       public boolean hasRequest() {
-        return ((bitField0_ & 0x00000008) == 0x00000008);
+        return ((bitField0_ & 0x00000004) == 0x00000004);
       }
       /**
        * <code>optional .akka.contrib.datareplication.OtherMessage request = 4;</code>
@@ -1754,7 +1665,7 @@ public final class ReplicatorMessages {
         } else {
           requestBuilder_.setMessage(value);
         }
-        bitField0_ |= 0x00000008;
+        bitField0_ |= 0x00000004;
         return this;
       }
       /**
@@ -1768,7 +1679,7 @@ public final class ReplicatorMessages {
         } else {
           requestBuilder_.setMessage(builderForValue.build());
         }
-        bitField0_ |= 0x00000008;
+        bitField0_ |= 0x00000004;
         return this;
       }
       /**
@@ -1776,7 +1687,7 @@ public final class ReplicatorMessages {
        */
       public Builder mergeRequest(akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.OtherMessage value) {
         if (requestBuilder_ == null) {
-          if (((bitField0_ & 0x00000008) == 0x00000008) &&
+          if (((bitField0_ & 0x00000004) == 0x00000004) &&
               request_ != akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.OtherMessage.getDefaultInstance()) {
             request_ =
               akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.OtherMessage.newBuilder(request_).mergeFrom(value).buildPartial();
@@ -1787,7 +1698,7 @@ public final class ReplicatorMessages {
         } else {
           requestBuilder_.mergeFrom(value);
         }
-        bitField0_ |= 0x00000008;
+        bitField0_ |= 0x00000004;
         return this;
       }
       /**
@@ -1800,14 +1711,14 @@ public final class ReplicatorMessages {
         } else {
           requestBuilder_.clear();
         }
-        bitField0_ = (bitField0_ & ~0x00000008);
+        bitField0_ = (bitField0_ & ~0x00000004);
         return this;
       }
       /**
        * <code>optional .akka.contrib.datareplication.OtherMessage request = 4;</code>
        */
       public akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.OtherMessage.Builder getRequestBuilder() {
-        bitField0_ |= 0x00000008;
+        bitField0_ |= 0x00000004;
         onChanged();
         return getRequestFieldBuilder().getBuilder();
       }
@@ -14598,48 +14509,48 @@ public final class ReplicatorMessages {
       ".datareplication\"u\n\003Get\022\013\n\003key\030\001 \002(\t\022\023\n\013" +
       "consistency\030\002 \002(\005\022\017\n\007timeout\030\003 \002(\005\022;\n\007re" +
       "quest\030\004 \001(\0132*.akka.contrib.datareplicati" +
-      "on.OtherMessage\"\237\001\n\nGetSuccess\022\013\n\003key\030\001 " +
+      "on.OtherMessage\"\220\001\n\nGetSuccess\022\013\n\003key\030\001 " +
       "\002(\t\0228\n\004data\030\002 \002(\0132*.akka.contrib.datarep" +
-      "lication.OtherMessage\022\r\n\005seqNo\030\003 \002(\003\022;\n\007" +
-      "request\030\004 \001(\0132*.akka.contrib.datareplica" +
-      "tion.OtherMessage\"T\n\010NotFound\022\013\n\003key\030\001 \002" +
-      "(\t\022;\n\007request\030\002 \001(\0132*.akka.contrib.datar",
-      "eplication.OtherMessage\"V\n\nGetFailure\022\013\n" +
-      "\003key\030\001 \002(\t\022;\n\007request\030\002 \001(\0132*.akka.contr" +
-      "ib.datareplication.OtherMessage\"%\n\tSubsc" +
-      "ribe\022\013\n\003key\030\001 \002(\t\022\013\n\003ref\030\002 \002(\t\"\'\n\013Unsubs" +
-      "cribe\022\013\n\003key\030\001 \002(\t\022\013\n\003ref\030\002 \002(\t\"P\n\007Chang" +
-      "ed\022\013\n\003key\030\001 \002(\t\0228\n\004data\030\002 \002(\0132*.akka.con" +
-      "trib.datareplication.OtherMessage\"R\n\005Wri" +
-      "te\022\013\n\003key\030\001 \002(\t\022<\n\010envelope\030\002 \002(\0132*.akka" +
-      ".contrib.datareplication.DataEnvelope\"\007\n" +
-      "\005Empty\"\023\n\004Read\022\013\n\003key\030\001 \002(\t\"J\n\nReadResul",
-      "t\022<\n\010envelope\030\001 \001(\0132*.akka.contrib.datar" +
-      "eplication.DataEnvelope\"\363\002\n\014DataEnvelope" +
-      "\0228\n\004data\030\001 \002(\0132*.akka.contrib.datareplic" +
-      "ation.OtherMessage\022H\n\007pruning\030\002 \003(\01327.ak" +
-      "ka.contrib.datareplication.DataEnvelope." +
-      "PruningEntry\032\336\001\n\014PruningEntry\022C\n\016removed" +
-      "Address\030\001 \002(\0132+.akka.contrib.datareplica" +
-      "tion.UniqueAddress\022A\n\014ownerAddress\030\002 \002(\013" +
-      "2+.akka.contrib.datareplication.UniqueAd" +
-      "dress\022\021\n\tperformed\030\003 \002(\010\0223\n\004seen\030\004 \003(\0132%",
-      ".akka.contrib.datareplication.Address\"k\n" +
-      "\006Status\022;\n\007entries\030\001 \003(\0132*.akka.contrib." +
-      "datareplication.Status.Entry\032$\n\005Entry\022\013\n" +
-      "\003key\030\001 \002(\t\022\016\n\006digest\030\002 \002(\014\"\231\001\n\006Gossip\022;\n" +
-      "\007entries\030\001 \003(\0132*.akka.contrib.datareplic" +
-      "ation.Gossip.Entry\032R\n\005Entry\022\013\n\003key\030\001 \002(\t" +
+      "lication.OtherMessage\022;\n\007request\030\004 \001(\0132*" +
+      ".akka.contrib.datareplication.OtherMessa" +
+      "ge\"T\n\010NotFound\022\013\n\003key\030\001 \002(\t\022;\n\007request\030\002" +
+      " \001(\0132*.akka.contrib.datareplication.Othe",
+      "rMessage\"V\n\nGetFailure\022\013\n\003key\030\001 \002(\t\022;\n\007r" +
+      "equest\030\002 \001(\0132*.akka.contrib.datareplicat" +
+      "ion.OtherMessage\"%\n\tSubscribe\022\013\n\003key\030\001 \002" +
+      "(\t\022\013\n\003ref\030\002 \002(\t\"\'\n\013Unsubscribe\022\013\n\003key\030\001 " +
+      "\002(\t\022\013\n\003ref\030\002 \002(\t\"P\n\007Changed\022\013\n\003key\030\001 \002(\t" +
+      "\0228\n\004data\030\002 \002(\0132*.akka.contrib.datareplic" +
+      "ation.OtherMessage\"R\n\005Write\022\013\n\003key\030\001 \002(\t" +
       "\022<\n\010envelope\030\002 \002(\0132*.akka.contrib.datare" +
-      "plication.DataEnvelope\"T\n\rUniqueAddress\022" +
-      "6\n\007address\030\001 \002(\0132%.akka.contrib.datarepl" +
-      "ication.Address\022\013\n\003uid\030\002 \002(\r\"K\n\007Address\022",
-      "\016\n\006system\030\001 \002(\t\022\020\n\010hostname\030\002 \002(\t\022\014\n\004por" +
-      "t\030\003 \002(\r\022\020\n\010protocol\030\004 \001(\t\"V\n\014OtherMessag" +
-      "e\022\027\n\017enclosedMessage\030\001 \002(\014\022\024\n\014serializer" +
-      "Id\030\002 \002(\005\022\027\n\017messageManifest\030\004 \001(\014\"\036\n\nStr" +
-      "ingGSet\022\020\n\010elements\030\001 \003(\tB-\n)akka.contri" +
-      "b.datareplication.protobuf.msgH\001"
+      "plication.DataEnvelope\"\007\n\005Empty\"\023\n\004Read\022" +
+      "\013\n\003key\030\001 \002(\t\"J\n\nReadResult\022<\n\010envelope\030\001",
+      " \001(\0132*.akka.contrib.datareplication.Data" +
+      "Envelope\"\363\002\n\014DataEnvelope\0228\n\004data\030\001 \002(\0132" +
+      "*.akka.contrib.datareplication.OtherMess" +
+      "age\022H\n\007pruning\030\002 \003(\01327.akka.contrib.data" +
+      "replication.DataEnvelope.PruningEntry\032\336\001" +
+      "\n\014PruningEntry\022C\n\016removedAddress\030\001 \002(\0132+" +
+      ".akka.contrib.datareplication.UniqueAddr" +
+      "ess\022A\n\014ownerAddress\030\002 \002(\0132+.akka.contrib" +
+      ".datareplication.UniqueAddress\022\021\n\tperfor" +
+      "med\030\003 \002(\010\0223\n\004seen\030\004 \003(\0132%.akka.contrib.d",
+      "atareplication.Address\"k\n\006Status\022;\n\007entr" +
+      "ies\030\001 \003(\0132*.akka.contrib.datareplication" +
+      ".Status.Entry\032$\n\005Entry\022\013\n\003key\030\001 \002(\t\022\016\n\006d" +
+      "igest\030\002 \002(\014\"\231\001\n\006Gossip\022;\n\007entries\030\001 \003(\0132" +
+      "*.akka.contrib.datareplication.Gossip.En" +
+      "try\032R\n\005Entry\022\013\n\003key\030\001 \002(\t\022<\n\010envelope\030\002 " +
+      "\002(\0132*.akka.contrib.datareplication.DataE" +
+      "nvelope\"T\n\rUniqueAddress\0226\n\007address\030\001 \002(" +
+      "\0132%.akka.contrib.datareplication.Address" +
+      "\022\013\n\003uid\030\002 \002(\r\"K\n\007Address\022\016\n\006system\030\001 \002(\t",
+      "\022\020\n\010hostname\030\002 \002(\t\022\014\n\004port\030\003 \002(\r\022\020\n\010prot" +
+      "ocol\030\004 \001(\t\"V\n\014OtherMessage\022\027\n\017enclosedMe" +
+      "ssage\030\001 \002(\014\022\024\n\014serializerId\030\002 \002(\005\022\027\n\017mes" +
+      "sageManifest\030\004 \001(\014\"\036\n\nStringGSet\022\020\n\010elem" +
+      "ents\030\001 \003(\tB-\n)akka.contrib.datareplicati" +
+      "on.protobuf.msgH\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -14657,7 +14568,7 @@ public final class ReplicatorMessages {
           internal_static_akka_contrib_datareplication_GetSuccess_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_akka_contrib_datareplication_GetSuccess_descriptor,
-              new java.lang.String[] { "Key", "Data", "SeqNo", "Request", });
+              new java.lang.String[] { "Key", "Data", "Request", });
           internal_static_akka_contrib_datareplication_NotFound_descriptor =
             getDescriptor().getMessageTypes().get(2);
           internal_static_akka_contrib_datareplication_NotFound_fieldAccessorTable = new

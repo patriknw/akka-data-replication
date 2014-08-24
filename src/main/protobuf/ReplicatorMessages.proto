@@ -16,7 +16,6 @@ message Get {
 message GetSuccess {
   required string key = 1;
   required OtherMessage data = 2;
-  required int64 seqNo = 3;
   optional OtherMessage request = 4;
 }
 

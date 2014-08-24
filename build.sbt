@@ -1,12 +1,13 @@
 import com.typesafe.sbt.SbtMultiJvm
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
+import generate.protobuf._
 
 val akkaVersion = "2.3.5"
 
 val project = Project(
   id = "akka-datareplication",
   base = file("."),
-  settings = Project.defaultSettings ++ SbtMultiJvm.multiJvmSettings ++ bintrayPublishSettings ++ Seq(
+  settings = Project.defaultSettings ++ SbtMultiJvm.multiJvmSettings ++ bintrayPublishSettings ++ Protobuf.settings ++ Seq(
     organization := "com.github.patriknw",
     name := "akka-datareplication",
     licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0")),
