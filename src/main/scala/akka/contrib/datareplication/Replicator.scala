@@ -332,7 +332,7 @@ object Replicator {
      * consistency.
      */
     def apply(key: String, data: ReplicatedData, seqNo: Long, request: Option[Any]): Update =
-      Update(key, data, seqNo, WriteOne, Duration.Zero, None)
+      Update(key, data, seqNo, WriteOne, Duration.Zero, request)
   }
   case class Update(key: String, data: ReplicatedData, seqNo: Long,
                     consistency: WriteConsistency, timeout: FiniteDuration, request: Option[Any] = None) {
@@ -347,7 +347,7 @@ object Replicator {
      * Use `Option.apply` to create the `Option`.
      */
     def this(key: String, data: ReplicatedData, seqNo: Long, request: Option[Any]) =
-      this(key, data, seqNo, WriteOne, Duration.Zero, None)
+      this(key, data, seqNo, WriteOne, Duration.Zero, request)
   }
   case class UpdateSuccess(key: String, seqNo: Any, request: Option[Any])
   sealed trait UpdateFailure {
