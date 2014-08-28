@@ -50,87 +50,38 @@ class ShoppingCart(userId: String) extends Actor with Stash {
   val timeout = 3.seconds
   val DataKey = "cart-" + userId
 
-  def receive = ready
-
-  // because of the get-modify-update roundtrip it will
-  // process one request at a time to support reading own updates,
-  // and make sure that own updates are not re-ordered
-  val ready: Receive = {
+  def receive = {
     case AddItem(item) ⇒
-      replicator ! Get(DataKey, ReadQuorum, timeout)
-      context.become(addItemInProgress(item))
+      val update = Update(DataKey, LWWMap(), ReadQuorum, WriteQuorum, timeout, None) {
+        cart => updateCart(cart, item)
+      }
+      replicator ! update
 
     case GetCart ⇒
-      replicator ! Get(DataKey, ReadQuorum, timeout)
-      context.become(getCartInProgress(sender()))
+      replicator ! Get(DataKey, ReadQuorum, timeout, Some(sender()))
 
-    case RemoveItem(productId) ⇒
-      replicator ! Get(DataKey, ReadQuorum, timeout)
-      context.become(removeItemInProgress(productId))
-  }
-
-  def becomeReady(): Unit = {
-    unstashAll()
-    context.become(ready)
-  }
-
-  def addItemInProgress(item: LineItem): Receive = {
-    case GetSuccess(_, data: LWWMap, _) ⇒
-      val newData = update(data, item)
-      replicator ! Update(DataKey, newData, WriteQuorum, timeout)
-
-    case _: NotFound ⇒
-      val data = LWWMap() + (item.productId -> item)
-      replicator ! Update(DataKey, data, WriteQuorum, timeout)
-
-    case _: GetFailure ⇒
-      // ReadQuorum failure, try again with local read
-      replicator ! Get(DataKey, ReadOne, timeout)
-
-    case _: UpdateSuccess | _: ReplicationUpdateFailure ⇒
-      // ReplicationUpdateFailure, will eventually be replicated
-      becomeReady()
-
-    case _ ⇒ stash()
-  }
-
-  def getCartInProgress(replyTo: ActorRef): Receive = {
-
-    case GetSuccess(_, data: LWWMap, _) ⇒
+    case GetSuccess(DataKey, data: LWWMap, Some(replyTo: ActorRef)) ⇒
       val cart = Cart(data.entries.values.map { case line: LineItem ⇒ line }.toSet)
       replyTo ! cart
-      becomeReady()
 
-    case _: NotFound ⇒
+    case NotFound(DataKey, Some(replyTo: ActorRef)) ⇒
       replyTo ! Cart(Set.empty)
-      becomeReady()
 
-    case _: GetFailure ⇒
+    case GetFailure(DataKey, Some(replyTo: ActorRef)) ⇒
       // ReadQuorum failure, try again with local read
-      replicator ! Get(DataKey, ReadOne, timeout)
-  }
+      replicator ! Get(DataKey, ReadOne, timeout, Some(replyTo))
 
-  def removeItemInProgress(productId: String): Receive = {
-
-    case GetSuccess(_, data: LWWMap, _) ⇒
-      val newData = data - productId
-      replicator ! Update(DataKey, newData, WriteQuorum, timeout)
-
-    case _: GetFailure ⇒
-      // ReadQuorum failure, try again with local read
-      replicator ! Get(DataKey, ReadOne, timeout)
-
-    case _: NotFound ⇒
-    // ok, cart not replicated yet, not possible to remove item
+    case RemoveItem(productId) ⇒
+      val update = Update(DataKey, LWWMap(), ReadQuorum, WriteQuorum, timeout, None) {
+        _ - productId
+      }
+      replicator ! update
 
     case _: UpdateSuccess | _: ReplicationUpdateFailure ⇒
-      // ReplicationUpdateFailure, will eventually be replicated
-      becomeReady()
-
-    case _ ⇒ stash()
+    // ReplicationUpdateFailure, will eventually be replicated  
   }
 
-  def update(data: LWWMap, item: LineItem): LWWMap =
+  def updateCart(data: LWWMap, item: LineItem): LWWMap =
     data.get(item.productId) match {
       case Some(LineItem(_, _, existingQuantity)) ⇒
         data + (item.productId -> item.copy(quantity = existingQuantity + item.quantity))

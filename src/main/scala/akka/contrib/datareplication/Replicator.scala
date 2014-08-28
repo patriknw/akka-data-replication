@@ -30,6 +30,7 @@ import java.security.MessageDigest
 import akka.cluster.ClusterEvent.InitialStateAsEvents
 import akka.actor.Address
 import akka.actor.Terminated
+import scala.collection.immutable.Queue
 
 object Replicator {
 
@@ -135,6 +136,10 @@ object Replicator {
     }
   }
 
+  sealed trait Command {
+    def key: String
+  }
+
   object Get {
     /**
      * `Get` value from local `Replicator`, i.e. `ReadOne`
@@ -147,13 +152,15 @@ object Replicator {
    * given `key`. The `Replicator` will reply with one of the [[GetResponse]] messages.
    */
   case class Get(key: String, consistency: ReadConsistency, timeout: FiniteDuration, request: Option[Any] = None)
-    extends ReplicatorMessage {
+    extends Command with ReplicatorMessage {
     /**
      * Java API: `Get` value from local `Replicator`, i.e. `ReadOne` consistency.
      */
     def this(key: String) = this(key, ReadOne, Duration.Zero, None)
   }
-  sealed trait GetResponse
+  sealed trait GetResponse {
+    def key: String
+  }
   case class GetSuccess(key: String, data: ReplicatedData, request: Option[Any])
     extends ReplicatorMessage with GetResponse
   case class NotFound(key: String, request: Option[Any])
@@ -169,40 +176,132 @@ object Replicator {
     extends ReplicatorMessage
 
   object Update {
-    /**
-     * `Update` value of local `Replicator`, i.e. `WriteOne`
-     * consistency.
-     */
-    def apply(key: String, data: ReplicatedData): Update =
-      Update(key, data, WriteOne, Duration.Zero, None)
 
     /**
-     * `Update` value of local `Replicator`, i.e. `WriteOne`
-     * consistency.
+     * Modify value of local `Replicator`, i.e. `ReadOne` / `WriteOne` consistency.
+     *
+     * If there is no current data value for the `key` the `initial` value will be
+     * passed to the `modify` function.
      */
-    def apply(key: String, data: ReplicatedData, request: Option[Any]): Update =
-      Update(key, data, WriteOne, Duration.Zero, request)
+    def apply[A <: ReplicatedData](key: String, initial: A)(modify: A => A): Update[A] =
+      Update(key, ReadOne, WriteOne, Duration.Zero, None)(modifyWithInitial(initial, modify))
+
+    /**
+     * Modify value of local `Replicator`, i.e. `ReadOne` / `WriteOne` consistency.
+     */
+    def apply[A <: ReplicatedData](key: String, initial: A, request: Option[Any])(
+      modify: A => A): Update[A] =
+      Update(key, ReadOne, WriteOne, Duration.Zero, request)(modifyWithInitial(initial, modify))
+
+    /**
+     * Modify value of local `Replicator` and replicate with given `writeConsistency`.
+     */
+    def apply[A <: ReplicatedData](
+      key: String, initial: A, writeConsistency: WriteConsistency,
+      timeout: FiniteDuration)(modify: A => A): Update[A] =
+      Update(key, ReadOne, writeConsistency, timeout, None)(modifyWithInitial(initial, modify))
+
+    /**
+     * Modify value of local `Replicator` and replicate with given `writeConsistency`.
+     */
+    def apply[A <: ReplicatedData](
+      key: String, initial: A, writeConsistency: WriteConsistency,
+      timeout: FiniteDuration, request: Option[Any])(modify: A => A): Update[A] =
+      Update(key, ReadOne, writeConsistency, timeout, request)(modifyWithInitial(initial, modify))
+
+    /**
+     * Retrieve value from other replicas with given `readConsistency` and then modify value and
+     * replicate with given `writeConsistency`.
+     */
+    def apply[A <: ReplicatedData](
+      key: String, initial: A, readConsistency: ReadConsistency, writeConsistency: WriteConsistency,
+      timeout: FiniteDuration, request: Option[Any])(modify: A => A): Update[A] =
+      Update(key, readConsistency, writeConsistency, timeout, request)(modifyWithInitial(initial, modify))
+
+    private def modifyWithInitial[A <: ReplicatedData](initial: A, modify: A => A): Option[A] => A = {
+      case Some(data) => modify(data)
+      case None       => modify(initial)
+    }
   }
   /**
    * Send this message to the local `Replicator` to update a data value for the
    * given `key`. The `Replicator` will reply with one of the [[UpdateResponse]] messages.
+   *
+   * Note that the [[Replicator.Update$ companion]] object provides `apply` functions for convenient
+   * construction of this message.
+   *
+   * The current data value for the `key` is passed as parameter to the `modify` function.
+   * It is `None` if there is no value for the `key`, and otherwise `Some(data)`. The function
+   * is supposed to return the new value of the data, which will then be replicated according to
+   * the given `writeConsistency`.
+   *
+   * The `modify` function is called by the `Replicator` actor and must therefore be a pure
+   * function that only uses the data parameter and stable fields from enclosing scope. It must
+   * for example not access `sender()` reference of an enclosing actor.
+   *
+   * If `readConsistency != ReadOne` it will first retrieve the data from other nodes
+   * and then apply the `modify` function with the latest data. If the read fails the update
+   * will continue anyway, using the local value of the data.
+   * To support "read your own writes" all incoming commands for this key will be
+   * buffered until the read is completed and the function has been applied.
    */
-  case class Update(key: String, data: ReplicatedData, consistency: WriteConsistency,
-                    timeout: FiniteDuration, request: Option[Any] = None) {
-    /**
-     * Java API `Update` value of local `Replicator`, i.e. `WriteOne` consistency.
-     */
-    def this(key: String, data: ReplicatedData) =
-      this(key, data, WriteOne, Duration.Zero, None)
+  case class Update[A <: ReplicatedData](key: String, readConsistency: ReadConsistency, writeConsistency: WriteConsistency,
+                                         timeout: FiniteDuration, request: Option[Any])(val modify: Option[A] => A)
+    extends Command {
 
     /**
-     * Java API: `Update` value of local `Replicator`, i.e. `WriteOne` consistency.
-     * Use `Option.apply` to create the `Option`.
+     * Java API
      */
-    def this(key: String, data: ReplicatedData, request: Option[Any]) =
-      this(key, data, WriteOne, Duration.Zero, request)
+    def this(key: String, readConsistency: ReadConsistency, writeConsistency: WriteConsistency,
+             timeout: FiniteDuration, request: Option[Any],
+             modify: akka.japi.Function[Option[A], A]) =
+      this(key, readConsistency, writeConsistency, timeout, request)(data => modify.apply(data))
+
+    /**
+     * Java API: Modify value of local `Replicator`, i.e. `ReadOne` / `WriteOne` consistency.
+     *
+     * If there is no current data value for the `key` the `initial` value will be
+     * passed to the `modify` function.
+     */
+    def this(key: String, initial: A, modify: akka.japi.Function[A, A]) =
+      this(key, ReadOne, WriteOne, Duration.Zero, None)(Update.modifyWithInitial(initial, data => modify.apply(data)))
+
+    /**
+     * Java API: Modify value of local `Replicator`, i.e. `ReadOne` / `WriteOne` consistency.
+     */
+    def this(key: String, initial: A, request: Option[Any], modify: akka.japi.Function[A, A]) =
+      this(key, ReadOne, WriteOne, Duration.Zero, request)(Update.modifyWithInitial(initial, data => modify.apply(data)))
+
+    /**
+     * Java API: Modify value of local `Replicator` and replicate with given `writeConsistency`.
+     */
+    def this(
+      key: String, initial: A, writeConsistency: WriteConsistency,
+      timeout: FiniteDuration, modify: akka.japi.Function[A, A]) =
+      this(key, ReadOne, writeConsistency, timeout, None)(Update.modifyWithInitial(initial, data => modify.apply(data)))
+
+    /**
+     * Java API: Modify value of local `Replicator` and replicate with given `writeConsistency`.
+     */
+    def this(
+      key: String, initial: A, writeConsistency: WriteConsistency,
+      timeout: FiniteDuration, request: Option[Any], modify: akka.japi.Function[A, A]) =
+      this(key, ReadOne, writeConsistency, timeout, request)(Update.modifyWithInitial(initial, data => modify.apply(data)))
+
+    /**
+     * Java API: Retrieve value from other replicas with given `readConsistency` and then modify value and
+     * replicate with given `writeConsistency`.
+     */
+    def this(
+      key: String, initial: A, readConsistency: ReadConsistency, writeConsistency: WriteConsistency,
+      timeout: FiniteDuration, request: Option[Any], modify: akka.japi.Function[A, A]) =
+      this(key, readConsistency, writeConsistency, timeout, request)(Update.modifyWithInitial(initial, data => modify.apply(data)))
+
   }
-  sealed trait UpdateResponse
+
+  sealed trait UpdateResponse {
+    def key: String
+  }
   case class UpdateSuccess(key: String, request: Option[Any]) extends UpdateResponse
   sealed trait UpdateFailure extends UpdateResponse {
     def key: String
@@ -217,28 +316,10 @@ object Replicator {
     extends RuntimeException with NoStackTrace with UpdateFailure {
     override def toString: String = s"InvalidUsage [$key]: $errorMessage"
   }
-
-  // FIXME complete experiment with UpdateOp with it turns out to be a good idea, otherwise remove
-  object UpdateOp {
-    /**
-     * Modify value of local `Replicator`, i.e. `ReadOne` / `WriteOne`
-     * consistency.
-     */
-    def apply(key: String)(op: ReplicatedData => ReplicatedData): UpdateOp =
-      UpdateOp(key, ReadOne, WriteOne, Duration.Zero, None)(op)
-
-    /**
-     * Modify value of local `Replicator`, i.e. `ReadOne` / `WriteOne`
-     * consistency.
-     */
-    def apply(key: String, request: Option[Any])(op: ReplicatedData => ReplicatedData): UpdateOp =
-      UpdateOp(key, ReadOne, WriteOne, Duration.Zero, request)(op)
+  case class ModifyFailure(key: String, errorMessage: String, request: Option[Any])
+    extends RuntimeException with NoStackTrace with UpdateFailure {
+    override def toString: String = s"ModifyFailure [$key]: $errorMessage"
   }
-  /**
-   * WARNING: This API is just an experiment so far
-   */
-  case class UpdateOp(key: String, readConsistency: ReadConsistency, writeConsistency: WriteConsistency,
-                      timeout: FiniteDuration, request: Option[Any] = None)(val op: ReplicatedData => ReplicatedData)
 
   object Delete {
     /**
@@ -251,14 +332,16 @@ object Replicator {
    * Send this message to the local `Replicator` to delete a data value for the
    * given `key`. The `Replicator` will reply with one of the [[DeleteResponse]] messages.
    */
-  case class Delete(key: String, consistency: WriteConsistency, timeout: FiniteDuration) {
+  case class Delete(key: String, consistency: WriteConsistency, timeout: FiniteDuration) extends Command {
     /**
      * Java API: `Delete` value of local `Replicator`, i.e. `WriteOne`
      * consistency.
      */
     def this(key: String) = this(key, WriteOne, Duration.Zero)
   }
-  sealed trait DeleteResponse
+  sealed trait DeleteResponse {
+    def key: String
+  }
   case class DeleteSuccess(key: String) extends DeleteResponse
   case class ReplicationDeleteFailure(key: String) extends DeleteResponse
   case class DataDeleted(key: String)
@@ -285,6 +368,9 @@ object Replicator {
     case class Read(key: String) extends ReplicatorMessage
     case class ReadResult(envelope: Option[DataEnvelope]) extends ReplicatorMessage
     case class ReadRepair(key: String, envelope: DataEnvelope)
+    case object ReadRepairAck
+    case class BufferedCommand(cmd: Command, replyTo: ActorRef)
+    case class UpdateInProgress(cmd: Update[ReplicatedData], replyTo: ActorRef)
 
     // Gossip Status message contains SHA-1 digests of the data to determine when
     // to send the full data
@@ -396,14 +482,24 @@ object Replicator {
  * A comprehensive study of Convergent and Commutative Replicated Data Types</a>
  * by Mark Shapiro et. al.
  *
- * The `Replicator` actor is started on each node in the cluster, or group of
+ * The `Replicator` actor must be started on each node in the cluster, or group of
  * nodes tagged with a specific role. It communicates with other `Replicator` instances
  * with the same path (without address) that are running on other nodes . For convenience it
  * can be used with the [[DataReplication]] extension.
  *
- * A modified [[ReplicatedData]] instance is replicated by sending it
- * in a [[Replicator.Update]] message to the the local `Replicator`.
- * You supply a consistency level which has the following meaning:
+ * == Update ==
+ *
+ * To modify and replicate a [[ReplicatedData]] value you send a [[Replicator.Update]] message
+ * to the the local `Replicator`.
+ * The current data value for the `key` of the `Update` is passed as parameter to the `modify`
+ * function of the `Update`. The function is supposed to return the new value of the data, which
+ * will then be replicated according to the given consistency level.
+ *
+ * The `modify` function is called by the `Replicator` actor and must therefore be a pure
+ * function that only uses the data parameter and stable fields from enclosing scope. It must
+ * for example not access `sender()` reference of an enclosing actor.
+ *
+ * You supply a write consistency level which has the following meaning:
  * <ul>
  * <li>`WriteOne` the value will immediately only be written to the local replica,
  *     and later disseminated with gossip</li>
@@ -425,16 +521,25 @@ object Replicator {
  * level within the supplied timeout. Otherwise a [[Replicator.UpdateFailure]] is sent.
  * Note that `UpdateFailure` does not mean that the update completely failed or was rolled back.
  * It may still have been replicated to some nodes, and will eventually be replicated to all
- * nodes with the gossip protocol. The data will always converge to the the same value no
- * matter how many times you retry the `Update`.
+ * nodes with the gossip protocol.
  *
- * Make sure that updates from one local `ActorSystem` is performed by one single actor, otherwise
- * concurrent updates to the same `key` will overwrite each others values.
+ * You will always see your own writes. For example if you send two `Update` messages
+ * changing the value of the same `key`, the `modify` function of the second message will
+ * see the change that was performed by the first `Update` message.
+ *
+ * The `Update` message also supports a read consistency level with same meaning as described for
+ * `Get` below. If the given read consitency level is not `ReadOne` it will first retrieve the
+ * data from other nodes and then apply the `modify` function with the latest data. If the read
+ * fails the update will continue anyway, using the local value of the data.
+ * To support "read your own writes" all incoming commands for this key will be
+ * buffered until the read is completed and the function has been applied.
  *
  * In the `Update` message you can pass an optional request context, which the `Replicator`
  * does not care about, but is included in the reply messages. This is a convenient
  * way to pass contextual information (e.g. original sender) without having to use `ask`
  * or local correlation data structures.
+ *
+ * == Get ==
  *
  * To retrieve the current value of a data you send [[Replicator.Get]] message to the
  * `Replicator`. You supply a consistency level which has the following meaning:
@@ -457,7 +562,12 @@ object Replicator {
  * `Get` if the value was successfully retrieved according to the supplied consistency
  * level within the supplied timeout. Otherwise a [[Replicator.GetFailure]] is sent.
  * If the key does not exist the reply will be [[Replicator.GetFailure]].
- * You will always read your own writes.
+ *
+ * You will always read your own writes. For example if you send a `Update` message
+ * followed by a `Get` of the same `key` the `Get` will retrieve the change that was
+ * performed by the preceding `Update` message. However, the order of the reply messages are
+ * not defined, i.e. in the previous example you may receive the `GetSuccess` before
+ * the `UpdateSuccess`.
  *
  * In the `Get` message you can pass an optional request context in the same way as for the
  * `Update` message, described above. For example the original sender can be passed and replied
@@ -466,11 +576,15 @@ object Replicator {
  * You can retrieve all keys of a local replica by sending [[Replicator.GetKeys]] message to the
  * `Replicator`. The reply of `GetKeys` is a [[Replicator.GetKeysResult]] message.
  *
+ * == Subscribe ==
+ *
  * You may also register interest in change notifications by sending [[Replicator.Subscribe]]
  * message to the `Replicator`. It will send [[Replicator.Changed]] messages to the registered
  * subscriber when the data for the subscribed key is updated. The subscriber is automatically
  * removed if the subscriber is terminated. A subscriber can also be deregistered with the
  * [[Replicator.Unsubscribe]] message.
+ *
+ * == Delete ==
  *
  * A data entry can be deleted by sending a [[Replicator.Delete]] message to the local
  * local `Replicator`. As reply of the `Delete` a [[Replicator.DeleteSuccess]] is sent to
@@ -483,7 +597,7 @@ object Replicator {
  * Subsequent `Delete`, `Update` and `Get` requests will be replied with [[Replicator.DataDeleted]].
  * Subscribers will receive [[Replicator.DataDeleted]].
  *
- * <b>The following feature is currently disabled, see issue #17.</b>
+ * == CRDT Garbage ==
  *
  * One thing that can be problematic with CRDTs is that some data types accumulate history (garbage).
  * For example a `GCounter` keeps track of one counter per node. If a `GCounter` has been updated
@@ -537,8 +651,7 @@ class Replicator(
   //Start periodic gossip to random nodes in cluster
   import context.dispatcher
   val gossipTask = context.system.scheduler.schedule(gossipInterval, gossipInterval, self, GossipTick)
-  // FIXME RemovedNodePruning disabled, see issue #17 
-  //  val pruningTask = context.system.scheduler.schedule(pruningInterval, pruningInterval, self, RemovedNodePruningTick)
+  val pruningTask = context.system.scheduler.schedule(pruningInterval, pruningInterval, self, RemovedNodePruningTick)
   val clockTask = context.system.scheduler.schedule(gossipInterval, gossipInterval, self, ClockTick)
 
   val serializer = SerializationExtension(context.system).serializerFor(classOf[DataEnvelope])
@@ -565,6 +678,8 @@ class Replicator(
 
   var subscribers = Map.empty[String, Set[ActorRef]]
 
+  var updateInProgressBuffer = Map.empty[String, Queue[BufferedCommand]]
+
   override def preStart(): Unit = {
     val leaderChangedClass = if (role.isDefined) classOf[RoleLeaderChanged] else classOf[LeaderChanged]
     cluster.subscribe(self, initialStateMode = InitialStateAsEvents,
@@ -574,102 +689,115 @@ class Replicator(
   override def postStop(): Unit = {
     cluster unsubscribe self
     gossipTask.cancel()
-    // FIXME RemovedNodePruning disabled, see issue #17
-    //    pruningTask.cancel()
+    pruningTask.cancel()
     clockTask.cancel()
   }
 
   def matchingRole(m: Member): Boolean = role.forall(m.hasRole)
 
-  def receive = {
-    case Get(key, consistency, timeout, req)            ⇒ receiveGet(key, consistency, timeout, req)
-    case Read(key)                                      ⇒ receiveRead(key)
-    case Update(key, _, _, _, req) if !isLocalSender    ⇒ receiveInvalidUpdate(key, req)
-    case Update(key, data, consistency, timeout, req)   ⇒ receiveUpdate(key, data, consistency, timeout, req)
-    case Write(key, envelope)                           ⇒ receiveWrite(key, envelope)
-    case ReadRepair(key, envelope)                      ⇒ write(key, envelope)
-    case GetKeys                                        ⇒ receiveGetKeys()
-    case Delete(key, consistency, timeout)              ⇒ receiveDelete(key, consistency, timeout)
-    case GossipTick                                     ⇒ receiveGossipTick()
-    case Status(otherDigests)                           ⇒ receiveStatus(otherDigests)
-    case Gossip(updatedData)                            ⇒ receiveGossip(updatedData)
-    case Subscribe(key, subscriber)                     ⇒ receiveSubscribe(key, subscriber)
-    case Unsubscribe(key, subscriber)                   ⇒ receiveUnsubscribe(key, subscriber)
-    case Terminated(ref)                                ⇒ receiveTerminated(ref)
-    case MemberUp(m)                                    ⇒ receiveMemberUp(m)
-    case MemberRemoved(m, _)                            ⇒ receiveMemberRemoved(m)
-    case _: MemberEvent                                 ⇒ // not of interest
-    case UnreachableMember(m)                           ⇒ receiveUnreachable(m)
-    case ReachableMember(m)                             ⇒ receiveReachable(m)
-    case LeaderChanged(leader)                          ⇒ receiveLeaderChanged(leader, None)
-    case RoleLeaderChanged(role, leader)                ⇒ receiveLeaderChanged(leader, Some(role))
-    case ClockTick                                      ⇒ receiveClockTick()
-    case RemovedNodePruningTick                         ⇒ receiveRemovedNodePruningTick()
-    case GetNodeCount                                   ⇒ receiveGetNodeCount()
+  def receive = normalReceive
 
-    case UpdateOp(key, _, _, _, req) if !isLocalSender  ⇒ receiveInvalidUpdate(key, req)
-    case u @ UpdateOp(key, readC, writeC, timeout, req) ⇒ receiveUpdateOp(key, u.op, readC, writeC, timeout, req)
+  val normalReceive: Receive = {
+    case Get(key, consistency, timeout, req)           ⇒ receiveGet(key, consistency, timeout, req, sender())
+    case Read(key)                                     ⇒ receiveRead(key)
+    case Update(key, _, _, _, req) if !isLocalSender() ⇒ receiveInvalidUpdate(key, req)
+    case u @ Update(key, readC, writeC, timeout, req)  ⇒ receiveUpdate(key, u.modify, readC, writeC, timeout, req, sender())
+    case Write(key, envelope)                          ⇒ receiveWrite(key, envelope)
+    case ReadRepair(key, envelope)                     ⇒ receiveReadRepair(key, envelope)
+    case GetKeys                                       ⇒ receiveGetKeys()
+    case Delete(key, consistency, timeout)             ⇒ receiveDelete(key, consistency, timeout, sender())
+    case GossipTick                                    ⇒ receiveGossipTick()
+    case Status(otherDigests)                          ⇒ receiveStatus(otherDigests)
+    case Gossip(updatedData)                           ⇒ receiveGossip(updatedData)
+    case Subscribe(key, subscriber)                    ⇒ receiveSubscribe(key, subscriber)
+    case Unsubscribe(key, subscriber)                  ⇒ receiveUnsubscribe(key, subscriber)
+    case Terminated(ref)                               ⇒ receiveTerminated(ref)
+    case MemberUp(m)                                   ⇒ receiveMemberUp(m)
+    case MemberRemoved(m, _)                           ⇒ receiveMemberRemoved(m)
+    case _: MemberEvent                                ⇒ // not of interest
+    case UnreachableMember(m)                          ⇒ receiveUnreachable(m)
+    case ReachableMember(m)                            ⇒ receiveReachable(m)
+    case LeaderChanged(leader)                         ⇒ receiveLeaderChanged(leader, None)
+    case RoleLeaderChanged(role, leader)               ⇒ receiveLeaderChanged(leader, Some(role))
+    case ClockTick                                     ⇒ receiveClockTick()
+    case RemovedNodePruningTick                        ⇒ receiveRemovedNodePruningTick()
+    case GetNodeCount                                  ⇒ receiveGetNodeCount()
   }
 
-  def receiveGet(key: String, consistency: ReadConsistency, timeout: FiniteDuration, req: Option[Any]): Unit = {
+  def receiveGet(key: String, consistency: ReadConsistency, timeout: FiniteDuration,
+                 req: Option[Any], replyTo: ActorRef): Unit = {
+    // don't use sender() in this method, since it is used from drainUpdateInProgressBuffer
     val localValue = getData(key)
+    log.debug("Received Get for key [{}], local data [{}]", key, localValue)
     if (consistency == ReadOne) {
       val reply = localValue match {
         case Some(DataEnvelope(DeletedData, _)) ⇒ DataDeleted(key)
         case Some(DataEnvelope(data, _))        ⇒ GetSuccess(key, data, req)
         case None                               ⇒ NotFound(key, req)
       }
-      sender() ! reply
+      replyTo ! reply
     } else
-      context.actorOf(Props(classOf[ReadAggregator], key, consistency, timeout, req, nodes, localValue, sender()))
+      context.actorOf(Props(classOf[ReadAggregator], key, consistency, timeout, req, nodes, localValue, replyTo))
   }
 
   def receiveRead(key: String): Unit = {
     sender() ! ReadResult(getData(key))
   }
 
-  def isLocalSender: Boolean = !sender().path.address.hasGlobalScope
+  def isLocalSender(): Boolean = !sender().path.address.hasGlobalScope
 
   def receiveInvalidUpdate(key: String, req: Option[Any]): Unit = {
     sender() ! InvalidUsage(key,
       "Replicator Update should only be used from an actor running in same local ActorSystem", req)
   }
 
-  def receiveUpdate(key: String, data: ReplicatedData, consistency: WriteConsistency,
-                    timeout: FiniteDuration, req: Option[Any]): Unit = {
-    if (log.isDebugEnabled) log.debug("Received Update {} existing {}", data, getData(key))
-    update(key, data, req) match {
-      case Success(merged) ⇒
-        if (consistency == WriteOne)
-          sender() ! UpdateSuccess(key, req)
-        else
-          context.actorOf(Props(classOf[WriteAggregator], key, merged, consistency, timeout, req,
-            nodes, sender()))
-      case Failure(e) ⇒
-        sender() ! e
-    }
-  }
-
-  def receiveUpdateOp(key: String, op: ReplicatedData => ReplicatedData,
-                      readConsistency: ReadConsistency, writeConsistency: WriteConsistency,
-                      timeout: FiniteDuration, req: Option[Any]): Unit = {
-    // FIXME when readConsistency != ReadOne we must delegate to a ReadWriteAggregator actor
-    //       and perhaps not allow any local changes of this key until that is done?
-    Try {
-      getData(key) match {
-        case Some(DataEnvelope(DeletedData, _))         ⇒ throw new DataDeleted(key)
-        case Some(envelope @ DataEnvelope(existing, _)) ⇒ op(existing)
-        case None                                       => throw new RuntimeException(s"Key [$key] not found")
+  def receiveUpdate(key: String, modify: Option[ReplicatedData] => ReplicatedData,
+                    readConsistency: ReadConsistency, writeConsistency: WriteConsistency,
+                    timeout: FiniteDuration, req: Option[Any], replyTo: ActorRef): Unit = {
+    // don't use sender() in this method, since it is used from drainUpdateInProgressBuffer
+    val localValue = getData(key)
+    if (readConsistency == ReadOne) {
+      Try {
+        localValue match {
+          case Some(DataEnvelope(DeletedData, _))         ⇒ throw new DataDeleted(key)
+          case Some(envelope @ DataEnvelope(existing, _)) ⇒ modify(Some(existing))
+          case None                                       => modify(None)
+        }
+      } match {
+        case Success(newData) =>
+          log.debug("Received Update for key [{}], old data [{}], new data [{}]", key, localValue, newData)
+          update(key, newData, req) match {
+            case Success(merged) ⇒
+              if (writeConsistency == WriteOne)
+                replyTo ! UpdateSuccess(key, req)
+              else
+                context.actorOf(Props(classOf[WriteAggregator], key, merged, writeConsistency, timeout, req,
+                  nodes, replyTo))
+            case Failure(e) ⇒
+              replyTo ! e
+          }
+        case Failure(e: DataDeleted) =>
+          log.debug("Received Update for deleted key [{}]", key)
+          replyTo ! e
+        case Failure(e) =>
+          log.debug("Received Update for key [{}], failed: {}", key, e.getMessage)
+          replyTo ! ModifyFailure(key, "Update failed: " + e.getMessage, req)
       }
-    } match {
-      case Success(newData) =>
-        receiveUpdate(key, newData, writeConsistency, timeout, req)
-      case Failure(e: DataDeleted) =>
-        sender() ! e
-      case Failure(e) =>
-        // FIXME use a another response message for this failure, i.e. exception throw by `op`
-        //       and NotFound
-        sender() ! InvalidUsage(key, "UpdateOp failed: " + e.getMessage(), req)
+    } else {
+      // Update with readConsistency != ReadOne means that we will first retrieve the data with
+      // ReadAggregator (same as is used for Get). To support "read your own writes" all incoming
+      // commands for this key will be buffered while the read is in progress. When the read is 
+      // completed the update will continue, operating on the retrieved data, and replicate the
+      // new value with the writeConsistency. Buffered commands are also processed when the read
+      // is completed.
+      log.debug("Received Update for key [{}], reading from [{}]", key, readConsistency)
+      val req2 = Some(UpdateInProgress(Update(key, readConsistency, writeConsistency, timeout, req)(modify), replyTo))
+      // FIXME props factory methods
+      context.actorOf(Props(classOf[ReadAggregator], key, readConsistency, timeout, req2, nodes, localValue, self))
+      if (updateInProgressBuffer.isEmpty)
+        context.become(updateInProgressReceive)
+      if (!updateInProgressBuffer.contains(key))
+        updateInProgressBuffer = updateInProgressBuffer.updated(key, Queue.empty)
     }
   }
 
@@ -694,6 +822,65 @@ class Replicator(
     }
   }
 
+  val updateInProgressReceive: Receive = ({
+    case Update(key, _, _, _, req) if !isLocalSender() ⇒ receiveInvalidUpdate(key, req)
+    case cmd: Command if updateInProgressBuffer.contains(cmd.key) =>
+      log.debug("Update in progress for [{}], buffering [{}]", cmd.key, cmd)
+      updateInProgressBuffer = updateInProgressBuffer.updated(cmd.key,
+        updateInProgressBuffer(cmd.key).enqueue(BufferedCommand(cmd, sender())))
+    case getResponse: GetResponse => getResponse match {
+      case GetSuccess(key, _, Some(UpdateInProgress(u @ Update(_, _, writeC, timeout, req), replyTo: ActorRef))) =>
+        // local value has been updated by the read-repair
+        continueUpdateAfterRead(key, u.modify, writeC, timeout, req, replyTo)
+      case NotFound(key, Some(UpdateInProgress(u @ Update(_, _, writeC, timeout, req), replyTo: ActorRef))) =>
+        continueUpdateAfterRead(key, u.modify, writeC, timeout, req, replyTo)
+      case GetFailure(key, Some(UpdateInProgress(u @ Update(_, readC, writeC, timeout, req), replyTo: ActorRef))) =>
+        // use local value
+        log.debug("Update [{}] reading from [{}] failed, using local value", key, readC)
+        continueUpdateAfterRead(key, u.modify, writeC, timeout, req, replyTo)
+      case other =>
+        // FIXME perhaps throw IllegalStateException
+        log.error("Unexpected reply [{}]", other)
+        unhandled(other)
+        drainUpdateInProgressBuffer(getResponse.key)
+    }
+  }: Receive).orElse(normalReceive)
+
+  def continueUpdateAfterRead(key: String, modify: Option[ReplicatedData] => ReplicatedData,
+                              writeConsistency: WriteConsistency, timeout: FiniteDuration,
+                              req: Option[Any], replyTo: ActorRef): Unit = {
+    log.debug("Continue update of [{}] after read", key)
+    receiveUpdate(key, modify, ReadOne, writeConsistency, timeout, req, replyTo)
+    drainUpdateInProgressBuffer(key)
+  }
+
+  def drainUpdateInProgressBuffer(key: String): Unit = {
+    @tailrec def drain(): Unit = {
+      val (cmd, remaining) = updateInProgressBuffer(key).dequeue
+      if (remaining.isEmpty)
+        updateInProgressBuffer -= key
+      else
+        updateInProgressBuffer = updateInProgressBuffer.updated(key, remaining)
+      val cont = cmd match {
+        case BufferedCommand(Get(_, consistency, timeout, req), replyTo) ⇒
+          receiveGet(key, consistency, timeout, req, replyTo)
+          true
+        case BufferedCommand(u @ Update(_, readC, writeC, timeout, req), replyTo) ⇒
+          receiveUpdate(key, u.modify, readC, writeC, timeout, req, replyTo)
+          (readC == ReadOne)
+        case BufferedCommand(Delete(_, consistency, timeout), replyTo) ⇒
+          receiveDelete(key, consistency, timeout, replyTo)
+          true
+      }
+      if (cont && remaining.nonEmpty) drain()
+    }
+
+    if (updateInProgressBuffer(key).nonEmpty) drain()
+    else updateInProgressBuffer -= key
+
+    if (updateInProgressBuffer.isEmpty) context.become(normalReceive)
+  }
+
   def receiveWrite(key: String, envelope: DataEnvelope): Unit = {
     write(key, envelope)
     sender() ! WriteAck
@@ -714,22 +901,28 @@ class Replicator(
         setData(key, pruningCleanupTombstoned(writeEnvelope).addSeen(selfAddress))
     }
 
+  def receiveReadRepair(key: String, writeEnvelope: DataEnvelope): Unit = {
+    write(key, writeEnvelope)
+    sender() ! ReadRepairAck
+  }
+
   def receiveGetKeys(): Unit =
     sender() ! GetKeysResult(dataEntries.collect {
       case (key, (DataEnvelope(data, _), _)) if data != DeletedData ⇒ key
     }(collection.breakOut))
 
   def receiveDelete(key: String, consistency: WriteConsistency,
-                    timeout: FiniteDuration): Unit = {
+                    timeout: FiniteDuration, replyTo: ActorRef): Unit = {
+    // don't use sender() in this method, since it is used from drainUpdateInProgressBuffer
     update(key, DeletedData, None) match {
       case Success(merged) ⇒
         if (consistency == WriteOne)
-          sender() ! DeleteSuccess(key)
+          replyTo ! DeleteSuccess(key)
         else
           context.actorOf(Props(classOf[WriteAggregator], key, merged, consistency, timeout, None,
-            nodes, sender()))
+            nodes, replyTo))
       case Failure(e) ⇒
-        sender() ! e
+        replyTo ! e
     }
   }
 
@@ -1132,17 +1325,30 @@ private[akka] class ReadAggregator(
     case ReceiveTimeout ⇒ reply(ok = false)
   }
 
-  def reply(ok: Boolean): Unit = {
-    val replyMsg = (ok, result) match {
+  def reply(ok: Boolean): Unit =
+    (ok, result) match {
       case (true, Some(envelope)) ⇒
         context.parent ! ReadRepair(key, envelope)
+        // read-repair happens before GetSuccess
+        context.become(waitReadRepairAck(envelope))
+      case (true, None) ⇒
+        replyTo.tell(NotFound(key, req), context.parent)
+        becomeDone()
+      case (false, _) ⇒
+        replyTo.tell(GetFailure(key, req), context.parent)
+        becomeDone()
+    }
+
+  def waitReadRepairAck(envelope: Replicator.Internal.DataEnvelope): Receive = {
+    case ReadRepairAck =>
+      val replyMsg =
         if (envelope.data == DeletedData) DataDeleted(key)
         else GetSuccess(key, envelope.data, req)
-      case (true, None) ⇒ NotFound(key, req)
-      case (false, _)   ⇒ GetFailure(key, req)
-    }
-    replyTo.tell(replyMsg, context.parent)
-    becomeDone()
+      replyTo.tell(replyMsg, context.parent)
+      becomeDone()
+    case _: ReadResult ⇒
+      // collect late replies
+      remaining -= sender().path.address
   }
 }
 

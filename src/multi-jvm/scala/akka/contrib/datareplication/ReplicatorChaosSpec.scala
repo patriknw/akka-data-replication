@@ -93,49 +93,41 @@ class ReplicatorChaosSpec extends MultiNodeSpec(ReplicatorChaosSpec) with STMult
       }
 
       runOn(first) {
-        var c = GCounter()
-        var pn = PNCounter()
         (0 until 5) foreach { i ⇒
-          c += 1
-          pn -= 1
-          replicator ! Update("A", c)
-          replicator ! Update("B", pn)
-          replicator ! Update("C", c, WriteAll, timeout)
+          replicator ! Update("A", GCounter())(_ + 1)
+          replicator ! Update("B", PNCounter())(_ - 1)
+          replicator ! Update("C", GCounter(), WriteAll, timeout)(_ + 1)
         }
         receiveN(15).map(_.getClass).toSet should be(Set(classOf[UpdateSuccess]))
       }
 
       runOn(second) {
-        val c = GCounter() + 20
-        val pn = PNCounter() + 20
-        replicator ! Update("A", c)
-        replicator ! Update("B", pn, WriteTwo, timeout)
-        replicator ! Update("C", c, WriteAll, timeout)
+        replicator ! Update("A", GCounter())(_ + 20)
+        replicator ! Update("B", PNCounter(), WriteTwo, timeout)(_ + 20)
+        replicator ! Update("C", GCounter(), WriteAll, timeout)(_ + 20)
         receiveN(3).toSet should be(Set(UpdateSuccess("A", None),
           UpdateSuccess("B", None), UpdateSuccess("C", None)))
 
-        replicator ! Update("E", GSet() + "e1" + "e2")
+        replicator ! Update("E", GSet())(_ + "e1" + "e2")
         expectMsg(UpdateSuccess("E", None))
 
-        replicator ! Update("F", ORSet() + "e1" + "e2")
+        replicator ! Update("F", ORSet())(_ + "e1" + "e2")
         expectMsg(UpdateSuccess("F", None))
       }
 
       runOn(fourth) {
-        val c = GCounter() + 40
-        replicator ! Update("D", c)
+        replicator ! Update("D", GCounter())(_ + 40)
         expectMsg(UpdateSuccess("D", None))
 
-        replicator ! Update("E", GSet() + "e2" + "e3")
+        replicator ! Update("E", GSet())(_ + "e2" + "e3")
         expectMsg(UpdateSuccess("E", None))
 
-        replicator ! Update("F", ORSet() + "e2" + "e3")
+        replicator ! Update("F", ORSet())(_ + "e2" + "e3")
         expectMsg(UpdateSuccess("F", None))
       }
 
       runOn(fifth) {
-        val c = GCounter() + 50
-        replicator ! Update("X", c, WriteTwo, timeout)
+        replicator ! Update("X", GCounter(), WriteTwo, timeout)(_ + 50)
         expectMsg(UpdateSuccess("X", None))
         replicator ! Delete("X")
         expectMsg(DeleteSuccess("X"))
@@ -163,32 +155,22 @@ class ReplicatorChaosSpec extends MultiNodeSpec(ReplicatorChaosSpec) with STMult
       enterBarrier("split")
 
       runOn(first) {
-        replicator ! Get("A")
-        val GetSuccess("A", c: GCounter, _) = expectMsgType[GetSuccess]
-        replicator ! Update("A", c + 1, WriteTwo, timeout)
+        replicator ! Update("A", GCounter(), WriteTwo, timeout)(_ + 1)
         expectMsg(UpdateSuccess("A", None))
       }
 
       runOn(third) {
-        replicator ! Get("A")
-        val GetSuccess("A", c: GCounter, _) = expectMsgType[GetSuccess]
-        replicator ! Update("A", c + 2, WriteTwo, timeout)
+        replicator ! Update("A", GCounter(), WriteTwo, timeout)(_ + 2)
         expectMsg(UpdateSuccess("A", None))
 
-        replicator ! Get("E")
-        val GetSuccess("E", sE: GSet, _) = expectMsgType[GetSuccess]
-        replicator ! Update("E", sE + "e4", WriteTwo, timeout)
+        replicator ! Update("E", GSet(), WriteTwo, timeout)(_ + "e4")
         expectMsg(UpdateSuccess("E", None))
 
-        replicator ! Get("F")
-        val GetSuccess("F", sF: ORSet, _) = expectMsgType[GetSuccess]
-        replicator ! Update("F", sF - "e2", WriteTwo, timeout)
+        replicator ! Update("F", ORSet(), WriteTwo, timeout)(_ - "e2")
         expectMsg(UpdateSuccess("F", None))
       }
       runOn(fourth) {
-        replicator ! Get("D")
-        val GetSuccess("D", c: GCounter, _) = expectMsgType[GetSuccess]
-        replicator ! Update("D", c + 1, WriteTwo, timeout)
+        replicator ! Update("D", GCounter(), WriteTwo, timeout)(_ + 1)
         expectMsg(UpdateSuccess("D", None))
       }
       enterBarrier("update-during-split")

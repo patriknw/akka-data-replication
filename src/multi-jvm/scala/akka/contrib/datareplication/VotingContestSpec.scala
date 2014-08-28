@@ -48,13 +48,12 @@ class VotingService extends Actor {
   val OpenedKey = "contestOpened"
   val ClosedKey = "contestClosed"
   val CountersKey = "contestCounters"
-  var counters = PNCounterMap()
 
   replicator ! Subscribe(OpenedKey, self)
 
   def receive = {
     case Open ⇒
-      replicator ! Update(OpenedKey, Flag().switchOn, WriteAll, 5.seconds)
+      replicator ! Update(OpenedKey, Flag(), WriteAll, 5.seconds)(_.switchOn)
       becomeOpen()
 
     case Changed(OpenedKey, flag: Flag) if flag.enabled ⇒
@@ -72,13 +71,15 @@ class VotingService extends Actor {
 
   def open: Receive = {
     case v @ Vote(participant) ⇒
-      counters = counters.increment(participant, 1)
-      replicator ! Update(CountersKey, counters, request = Some(v))
+      val update = Update(CountersKey, PNCounterMap(), request = Some(v)) {
+        _.increment(participant, 1)
+      }
+      replicator ! update
 
     case _: UpdateSuccess ⇒
 
     case Close ⇒
-      replicator ! Update(ClosedKey, Flag().switchOn, WriteAll, 5.seconds)
+      replicator ! Update(ClosedKey, Flag(), WriteAll, 5.seconds)(_.switchOn)
       context.become(getVotes(open = false))
 
     case Changed(ClosedKey, flag: Flag) if flag.enabled ⇒
