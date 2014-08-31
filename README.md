@@ -49,27 +49,22 @@ class DataBot extends Actor with ActorLogging {
 
   replicator ! Subscribe("key", self)
 
-  var current = ORSet()
-
   def receive = {
     case Tick =>
       val s = ThreadLocalRandom.current().nextInt(97, 123).toChar.toString
       if (ThreadLocalRandom.current().nextBoolean()) {
         // add
-        val newData = current + s
         log.info("Adding: {}", s)
-        replicator ! Update("key", newData)
+        replicator ! Update("key", ORSet())(_ + s)
       } else {
         // remove
-        val newData = current - s
         log.info("Removing: {}", s)
-        replicator ! Update("key", newData)
+        replicator ! Update("key", ORSet())(_ - s)
       }
 
     case _: UpdateResponse => // ignore  
 
     case Changed("key", data: ORSet) =>
-      current = data
       log.info("Current elements: {}", data.value)
   }
 
