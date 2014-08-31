@@ -26,17 +26,10 @@ object LocalConcurrencySpec {
     val replicator = DataReplication(context.system).replicator
     val key = "key"
 
-    override def preStart(): Unit = {
-      // make sure there is an empty start value
-      replicator ! Replicator.Update(key, ORSet.empty)
-    }
-
     def receive = {
       case s: String =>
-        val updateOp = Replicator.UpdateOp(key) {
-          case data: ORSet => data + s
-        }
-        replicator ! updateOp
+        val update = Replicator.Update(key, ORSet.empty)(_ + s)
+        replicator ! update
     }
   }
 }

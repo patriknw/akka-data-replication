@@ -52,8 +52,7 @@ class ReplicatorPruningSpec extends MultiNodeSpec(ReplicatorPruningSpec) with ST
 
   "Pruning of CRDT" must {
 
-    // FIXME see issue #17
-    "move data from removed node" ignore {
+    "move data from removed node" in {
       join(first, first)
       join(second, first)
       join(third, first)
@@ -76,16 +75,13 @@ class ReplicatorPruningSpec extends MultiNodeSpec(ReplicatorPruningSpec) with ST
         member.uniqueAddress
       }
 
-      val c3 = GCounter() + 3
-      replicator ! Update("A", c3, WriteAll, timeout)
+      replicator ! Update("A", GCounter(), WriteAll, timeout)(_ + 3)
       expectMsg(UpdateSuccess("A", None))
 
-      val s = ORSet() + "a" + "b" + "c"
-      replicator ! Update("B", s, WriteAll, timeout)
+      replicator ! Update("B", ORSet(), WriteAll, timeout)(_ + "a" + "b" + "c")
       expectMsg(UpdateSuccess("B", None))
 
-      val m = PNCounterMap() increment "x" increment "y"
-      replicator ! Update("C", m, WriteAll, timeout)
+      replicator ! Update("C", PNCounterMap(), WriteAll, timeout)(_ increment "x" increment "y")
       expectMsg(UpdateSuccess("C", None))
 
       enterBarrier("updates-done")
@@ -153,24 +149,15 @@ class ReplicatorPruningSpec extends MultiNodeSpec(ReplicatorPruningSpec) with ST
       }
       enterBarrier("pruning-done")
 
-      // on one of the nodes the seqNo has been updated, 
-      // client might think the expected seqNo is 1 and then Update should reply with WrongSeqNo
+      // on one of the nodes the data has been updated by the pruning, 
+      // client can update anyway
       def updateAfterPruning(expectedValue: Int): Unit = {
-        val c = oldCounter + 1
-        replicator ! Update("A", c, WriteAll, timeout, None)
+        replicator ! Update("A", GCounter(), WriteAll, timeout, None)(_ + 1)
         expectMsgPF() {
           case UpdateSuccess("A", _) ⇒
             replicator ! Get("A", ReadOne, timeout)
             val retrieved = expectMsgType[GetSuccess].data.asInstanceOf[GCounter]
             retrieved.value should be(expectedValue)
-          /* FIXME see issue #17
-          case WrongSeqNo("A", currentCrdt: GCounter, 1, currentSeqNo, _) ⇒
-            replicator ! Update("A", currentCrdt + 1, seqNo = currentSeqNo, WriteAll, timeout, None)
-            expectMsg(UpdateSuccess("A", currentSeqNo, None))
-            replicator ! Get("A", ReadOne, timeout)
-            val retrieved = expectMsgType[GetSuccess].data.asInstanceOf[GCounter]
-            retrieved.value should be(expectedValue)
-          */
         }
       }
       runOn(first) {
