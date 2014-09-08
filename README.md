@@ -74,28 +74,28 @@ class DataBot extends Actor with ActorLogging {
 ```
     
 The full source code for this sample is in 
-[DataBot.scala](https://github.com/patriknw/akka-data-replication/blob/v0.4/src/test/scala/akka/contrib/datareplication/sample/DataBot.scala).   
+[DataBot.scala](https://github.com/patriknw/akka-data-replication/blob/v0.5/src/test/scala/akka/contrib/datareplication/sample/DataBot.scala).   
 
 More detailed documentation can be found in the
-[ScalaDoc](http://dl.bintray.com/patriknw/maven/com/github/patriknw/akka-data-replication_2.10/0.4/akka-data-replication_2.10-0.4-javadoc.jar)
+[ScalaDoc](http://dl.bintray.com/patriknw/maven/com/github/patriknw/akka-data-replication_2.10/0.5/akka-data-replication_2.10-0.5-javadoc.jar)
 of `Replicator` and linked classes.
 
 Two other examples:
 
-- [VotingService](https://github.com/patriknw/akka-data-replication/blob/v0.4/src/multi-jvm/scala/akka/contrib/datareplication/VotingContestSpec.scala#L30)
-- [ShoppingCart](https://github.com/patriknw/akka-data-replication/blob/v0.4/src/multi-jvm/scala/akka/contrib/datareplication/ReplicatedShoppingCartSpec.scala#L31)
+- [VotingService](https://github.com/patriknw/akka-data-replication/blob/v0.5/src/multi-jvm/scala/akka/contrib/datareplication/VotingContestSpec.scala#L30)
+- [ShoppingCart](https://github.com/patriknw/akka-data-replication/blob/v0.5/src/multi-jvm/scala/akka/contrib/datareplication/ReplicatedShoppingCartSpec.scala#L31)
 
 Dependency
 ----------
 
-Latest version of `akka-data-replication` is `0.4`. This version depends on Akka 2.3.5 and is
+Latest version of `akka-data-replication` is `0.5`. This version depends on Akka 2.3.5 and is
 cross-built against Scala 2.10.4 and 2.11.2.
 
 Add the following lines to your `build.sbt` file:
 
     resolvers += "patriknw at bintray" at "http://dl.bintray.com/patriknw/maven"
 
-    libraryDependencies += "com.github.patriknw" %% "akka-data-replication" % "0.4"
+    libraryDependencies += "com.github.patriknw" %% "akka-data-replication" % "0.5"
 
 More Resources
 --------------
