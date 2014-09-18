@@ -383,18 +383,14 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
       // verify read your own writes, without waiting for the UpdateSuccess reply
       // note that the order of the replies are not defined, and therefore we use separate probes
       val probe2 = TestProbe()
-      replicator.tell(Get("E", ReadQuorum, timeout), probe2.ref)
+      replicator.tell(Update("E", GCounter(), ReadOne, WriteQuorum, timeout, Some(154))(_ + 1), probe2.ref)
       val probe3 = TestProbe()
-      replicator.tell(Update("E", GCounter(), ReadOne, WriteQuorum, timeout, Some(154))(_ + 1), probe3.ref)
-      val probe4 = TestProbe()
-      replicator.tell(Update("E", GCounter(), ReadQuorum, WriteQuorum, timeout, Some(155))(_ + 1), probe4.ref)
+      replicator.tell(Update("E", GCounter(), ReadQuorum, WriteQuorum, timeout, Some(155))(_ + 1), probe3.ref)
       val probe5 = TestProbe()
       replicator.tell(Get("E", ReadQuorum, timeout), probe5.ref)
       probe1.expectMsg(UpdateSuccess("E", Some(153)))
-      val c153 = probe2.expectMsgPF() { case GetSuccess("E", c: GCounter, _) ⇒ c }
-      c153.value should be(153)
-      probe3.expectMsg(UpdateSuccess("E", Some(154)))
-      probe4.expectMsg(UpdateSuccess("E", Some(155)))
+      probe2.expectMsg(UpdateSuccess("E", Some(154)))
+      probe3.expectMsg(UpdateSuccess("E", Some(155)))
       val c155 = probe5.expectMsgPF() { case GetSuccess("E", c: GCounter, _) ⇒ c }
       c155.value should be(155)
     }

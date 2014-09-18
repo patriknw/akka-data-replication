@@ -17,6 +17,7 @@ import akka.contrib.datareplication.protobuf.msg.{ ReplicatorMessages ⇒ dm }
 import akka.serialization.SerializationExtension
 import akka.serialization.JSerializer
 import akka.cluster.UniqueAddress
+import akka.serialization.Serialization
 
 /**
  * Some useful serialization helper methods.
@@ -26,6 +27,30 @@ trait SerializationSupport {
   private final val BufferSize = 1024 * 4
 
   def system: ExtendedActorSystem
+
+  @volatile
+  private var ser: Serialization = _
+  def serialization: Serialization = {
+    if (ser == null) ser = SerializationExtension(system)
+    ser
+  }
+
+  @volatile
+  private var protocol: String = _
+  def addressProtocol: String = {
+    if (protocol == null) protocol = system.provider.getDefaultAddress.protocol
+    protocol
+  }
+
+  @volatile
+  private var transportInfo: Serialization.Information = _
+  def transportInformation: Serialization.Information = {
+    if (transportInfo == null) {
+      val address = system.provider.getDefaultAddress
+      transportInfo = Serialization.Information(address, system)
+    }
+    transportInfo
+  }
 
   def compress(msg: MessageLite): Array[Byte] = {
     val bos = new ByteArrayOutputStream(BufferSize)
@@ -52,13 +77,13 @@ trait SerializationSupport {
   }
 
   def addressToProto(address: Address): dm.Address.Builder = address match {
-    case Address(protocol, system, Some(host), Some(port)) ⇒
-      dm.Address.newBuilder().setSystem(system).setHostname(host).setPort(port).setProtocol(protocol)
+    case Address(_, _, Some(host), Some(port)) ⇒
+      dm.Address.newBuilder().setHostname(host).setPort(port)
     case _ ⇒ throw new IllegalArgumentException(s"Address [${address}] could not be serialized: host or port missing.")
   }
 
   def addressFromProto(address: dm.Address): Address =
-    Address(address.getProtocol, address.getSystem, address.getHostname, address.getPort)
+    Address(addressProtocol, system.name, address.getHostname, address.getPort)
 
   def uniqueAddressToProto(uniqueAddress: UniqueAddress): dm.UniqueAddress.Builder =
     dm.UniqueAddress.newBuilder().setAddress(addressToProto(uniqueAddress.address)).setUid(uniqueAddress.uid)
@@ -70,18 +95,28 @@ trait SerializationSupport {
     system.provider.resolveActorRef(path)
 
   def otherMessageToProto(msg: Any): dm.OtherMessage = {
-    val m = msg.asInstanceOf[AnyRef]
-    val msgSerializer = SerializationExtension(system).findSerializerFor(m)
-    val builder = dm.OtherMessage.newBuilder().
-      setEnclosedMessage(ByteString.copyFrom(msgSerializer.toBinary(m)))
-      .setSerializerId(msgSerializer.identifier)
-    if (msgSerializer.includeManifest)
-      builder.setMessageManifest(ByteString.copyFromUtf8(m.getClass.getName))
-    builder.build()
+    def buildOther(): dm.OtherMessage = {
+      val m = msg.asInstanceOf[AnyRef]
+      val msgSerializer = serialization.findSerializerFor(m)
+      val builder = dm.OtherMessage.newBuilder().
+        setEnclosedMessage(ByteString.copyFrom(msgSerializer.toBinary(m)))
+        .setSerializerId(msgSerializer.identifier)
+      if (msgSerializer.includeManifest)
+        builder.setMessageManifest(ByteString.copyFromUtf8(m.getClass.getName))
+      builder.build()
+    }
+
+    // Serialize actor references with full address information (defaultAddress).
+    // When sending remote messages currentTransportInformation is already set,
+    // but when serializing for digests it must be set here.
+    if (Serialization.currentTransportInformation.value == null)
+      Serialization.currentTransportInformation.withValue(transportInformation) { buildOther() }
+    else
+      buildOther()
   }
 
   def otherMessageFromProto(other: dm.OtherMessage): AnyRef = {
-    SerializationExtension(system).deserialize(
+    serialization.deserialize(
       other.getEnclosedMessage.toByteArray,
       other.getSerializerId,
       if (other.hasMessageManifest)

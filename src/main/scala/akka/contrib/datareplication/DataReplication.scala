@@ -52,11 +52,12 @@ class DataReplication(system: ExtendedActorSystem) extends Extension {
     } else {
       val name = config.getString("name")
       val gossipInterval = config.getDuration("gossip-interval", MILLISECONDS).millis
+      val notifySubscribersInterval = config.getDuration("notify-subscribers-interval", MILLISECONDS).millis
       val maxDeltaElements = config.getInt("max-delta-elements")
       val pruningInterval = config.getDuration("pruning-interval", MILLISECONDS).millis
       val maxPruningDissemination = config.getDuration("max-pruning-dissemination", MILLISECONDS).millis
 
-      system.actorOf(Replicator.props(role, gossipInterval, maxDeltaElements,
+      system.actorOf(Replicator.props(role, gossipInterval, notifySubscribersInterval, maxDeltaElements,
         pruningInterval, maxPruningDissemination), name)
     }
 }

@@ -33,6 +33,10 @@ import akka.contrib.datareplication.VectorClock
  */
 class ReplicatedDataSerializer(val system: ExtendedActorSystem) extends Serializer with SerializationSupport {
 
+  override def includeManifest: Boolean = true
+
+  override def identifier = 99902
+
   private val fromBinaryMap = collection.immutable.HashMap[Class[_ <: ReplicatedData], Array[Byte] ⇒ AnyRef](
     classOf[GSet] -> gsetFromBinary,
     classOf[ORSet] -> orsetFromBinary,
@@ -46,12 +50,8 @@ class ReplicatedDataSerializer(val system: ExtendedActorSystem) extends Serializ
     DeletedData.getClass -> (_ ⇒ DeletedData),
     classOf[VectorClock] -> vectorClockFromBinary)
 
-  def includeManifest: Boolean = true
-
-  def identifier = 99902
-
   def toBinary(obj: AnyRef): Array[Byte] = obj match {
-    case m: ORSet        ⇒ orsetToProto(m).toByteArray
+    case m: ORSet        ⇒ compress(orsetToProto(m))
     case m: GSet         ⇒ gsetToProto(m).toByteArray
     case m: GCounter     ⇒ gcounterToProto(m).toByteArray
     case m: PNCounter    ⇒ pncounterToProto(m).toByteArray
@@ -175,7 +175,7 @@ class ReplicatedDataSerializer(val system: ExtendedActorSystem) extends Serializ
   }
 
   def orsetFromBinary(bytes: Array[Byte]): ORSet =
-    orsetFromProto(rd.ORSet.parseFrom(bytes))
+    orsetFromProto(rd.ORSet.parseFrom(decompress(bytes)))
 
   def orsetFromProto(orset: rd.ORSet): ORSet = {
     val entries =

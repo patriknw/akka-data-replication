@@ -24,15 +24,17 @@ import akka.contrib.datareplication.Replicator.Internal._
 import akka.contrib.datareplication.VectorClock
 import akka.testkit.TestKit
 import akka.cluster.UniqueAddress
+import com.typesafe.config.ConfigFactory
 
-class ReplicatedDataSerializerSpec extends TestKit(ActorSystem("ReplicatedDataSerializerSpec"))
+class ReplicatedDataSerializerSpec extends TestKit(ActorSystem("ReplicatedDataSerializerSpec",
+  ConfigFactory.parseString("akka.actor.provider=akka.cluster.ClusterActorRefProvider")))
   with WordSpecLike with Matchers with BeforeAndAfterAll {
 
   val serializer = new ReplicatedDataSerializer(system.asInstanceOf[ExtendedActorSystem])
 
-  val address1 = UniqueAddress(Address("akka.tcp", "system", "some.host.org", 4711), 1)
-  val address2 = UniqueAddress(Address("akka.tcp", "system", "other.host.org", 4711), 2)
-  val address3 = UniqueAddress(Address("akka.tcp", "system", "some.host.org", 4712), 3)
+  val address1 = UniqueAddress(Address("akka.tcp", system.name, "some.host.org", 4711), 1)
+  val address2 = UniqueAddress(Address("akka.tcp", system.name, "other.host.org", 4711), 2)
+  val address3 = UniqueAddress(Address("akka.tcp", system.name, "some.host.org", 4712), 3)
 
   override def afterAll {
     shutdown()

@@ -4,7 +4,6 @@
 package akka.contrib.datareplication.protobuf
 
 import scala.concurrent.duration._
-
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.Matchers
 import org.scalatest.WordSpecLike
@@ -21,15 +20,17 @@ import akka.contrib.datareplication.Replicator.Internal._
 import akka.testkit.TestKit
 import akka.util.ByteString
 import akka.cluster.UniqueAddress
+import com.typesafe.config.ConfigFactory
 
-class ReplicatorMessageSerializerSpec extends TestKit(ActorSystem("ReplicatorMessageSerializerSpec"))
+class ReplicatorMessageSerializerSpec extends TestKit(ActorSystem("ReplicatorMessageSerializerSpec",
+  ConfigFactory.parseString("akka.actor.provider=akka.cluster.ClusterActorRefProvider")))
   with WordSpecLike with Matchers with BeforeAndAfterAll {
 
   val serializer = new ReplicatorMessageSerializer(system.asInstanceOf[ExtendedActorSystem])
 
-  val address1 = UniqueAddress(Address("akka.tcp", "system", "some.host.org", 4711), 1)
-  val address2 = UniqueAddress(Address("akka.tcp", "system", "other.host.org", 4711), 2)
-  val address3 = UniqueAddress(Address("akka.tcp", "system", "some.host.org", 4712), 3)
+  val address1 = UniqueAddress(Address("akka.tcp", system.name, "some.host.org", 4711), 1)
+  val address2 = UniqueAddress(Address("akka.tcp", system.name, "other.host.org", 4711), 2)
+  val address3 = UniqueAddress(Address("akka.tcp", system.name, "some.host.org", 4712), 3)
 
   override def afterAll {
     shutdown()
@@ -68,7 +69,7 @@ class ReplicatorMessageSerializerSpec extends TestKit(ActorSystem("ReplicatorMes
       checkSerialization(Status(Map("A" -> ByteString.fromString("a"),
         "B" -> ByteString.fromString("b"))))
       checkSerialization(Gossip(Map("A" -> DataEnvelope(data1),
-        "B" -> DataEnvelope(GSet() + "b" + "c"))))
+        "B" -> DataEnvelope(GSet() + "b" + "c")), sendBack = true))
     }
 
   }
