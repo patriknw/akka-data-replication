@@ -10444,27 +10444,37 @@ public final class ReplicatorMessages {
   public interface GossipOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
 
-    // repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;
+    // required bool sendBack = 1;
     /**
-     * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+     * <code>required bool sendBack = 1;</code>
+     */
+    boolean hasSendBack();
+    /**
+     * <code>required bool sendBack = 1;</code>
+     */
+    boolean getSendBack();
+
+    // repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;
+    /**
+     * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
      */
     java.util.List<akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry> 
         getEntriesList();
     /**
-     * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+     * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
      */
     akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry getEntries(int index);
     /**
-     * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+     * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
      */
     int getEntriesCount();
     /**
-     * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+     * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
      */
     java.util.List<? extends akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.EntryOrBuilder> 
         getEntriesOrBuilderList();
     /**
-     * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+     * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
      */
     akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.EntryOrBuilder getEntriesOrBuilder(
         int index);
@@ -10520,10 +10530,15 @@ public final class ReplicatorMessages {
               }
               break;
             }
-            case 10: {
-              if (!((mutable_bitField0_ & 0x00000001) == 0x00000001)) {
+            case 8: {
+              bitField0_ |= 0x00000001;
+              sendBack_ = input.readBool();
+              break;
+            }
+            case 18: {
+              if (!((mutable_bitField0_ & 0x00000002) == 0x00000002)) {
                 entries_ = new java.util.ArrayList<akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry>();
-                mutable_bitField0_ |= 0x00000001;
+                mutable_bitField0_ |= 0x00000002;
               }
               entries_.add(input.readMessage(akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry.PARSER, extensionRegistry));
               break;
@@ -10536,7 +10551,7 @@ public final class ReplicatorMessages {
         throw new com.google.protobuf.InvalidProtocolBufferException(
             e.getMessage()).setUnfinishedMessage(this);
       } finally {
-        if (((mutable_bitField0_ & 0x00000001) == 0x00000001)) {
+        if (((mutable_bitField0_ & 0x00000002) == 0x00000002)) {
           entries_ = java.util.Collections.unmodifiableList(entries_);
         }
         this.unknownFields = unknownFields.build();
@@ -11257,36 +11272,53 @@ public final class ReplicatorMessages {
       // @@protoc_insertion_point(class_scope:akka.contrib.datareplication.Gossip.Entry)
     }
 
-    // repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;
-    public static final int ENTRIES_FIELD_NUMBER = 1;
+    private int bitField0_;
+    // required bool sendBack = 1;
+    public static final int SENDBACK_FIELD_NUMBER = 1;
+    private boolean sendBack_;
+    /**
+     * <code>required bool sendBack = 1;</code>
+     */
+    public boolean hasSendBack() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>required bool sendBack = 1;</code>
+     */
+    public boolean getSendBack() {
+      return sendBack_;
+    }
+
+    // repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;
+    public static final int ENTRIES_FIELD_NUMBER = 2;
     private java.util.List<akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry> entries_;
     /**
-     * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+     * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
      */
     public java.util.List<akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry> getEntriesList() {
       return entries_;
     }
     /**
-     * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+     * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
      */
     public java.util.List<? extends akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.EntryOrBuilder> 
         getEntriesOrBuilderList() {
       return entries_;
     }
     /**
-     * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+     * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
      */
     public int getEntriesCount() {
       return entries_.size();
     }
     /**
-     * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+     * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
      */
     public akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry getEntries(int index) {
       return entries_.get(index);
     }
     /**
-     * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+     * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
      */
     public akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.EntryOrBuilder getEntriesOrBuilder(
         int index) {
@@ -11294,6 +11326,7 @@ public final class ReplicatorMessages {
     }
 
     private void initFields() {
+      sendBack_ = false;
       entries_ = java.util.Collections.emptyList();
     }
     private byte memoizedIsInitialized = -1;
@@ -11301,6 +11334,10 @@ public final class ReplicatorMessages {
       byte isInitialized = memoizedIsInitialized;
       if (isInitialized != -1) return isInitialized == 1;
 
+      if (!hasSendBack()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
       for (int i = 0; i < getEntriesCount(); i++) {
         if (!getEntries(i).isInitialized()) {
           memoizedIsInitialized = 0;
@@ -11314,8 +11351,11 @@ public final class ReplicatorMessages {
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
       getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeBool(1, sendBack_);
+      }
       for (int i = 0; i < entries_.size(); i++) {
-        output.writeMessage(1, entries_.get(i));
+        output.writeMessage(2, entries_.get(i));
       }
       getUnknownFields().writeTo(output);
     }
@@ -11326,9 +11366,13 @@ public final class ReplicatorMessages {
       if (size != -1) return size;
 
       size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBoolSize(1, sendBack_);
+      }
       for (int i = 0; i < entries_.size(); i++) {
         size += com.google.protobuf.CodedOutputStream
-          .computeMessageSize(1, entries_.get(i));
+          .computeMessageSize(2, entries_.get(i));
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -11447,9 +11491,11 @@ public final class ReplicatorMessages {
 
       public Builder clear() {
         super.clear();
+        sendBack_ = false;
+        bitField0_ = (bitField0_ & ~0x00000001);
         if (entriesBuilder_ == null) {
           entries_ = java.util.Collections.emptyList();
-          bitField0_ = (bitField0_ & ~0x00000001);
+          bitField0_ = (bitField0_ & ~0x00000002);
         } else {
           entriesBuilder_.clear();
         }
@@ -11480,15 +11526,21 @@ public final class ReplicatorMessages {
       public akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip buildPartial() {
         akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip result = new akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip(this);
         int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.sendBack_ = sendBack_;
         if (entriesBuilder_ == null) {
-          if (((bitField0_ & 0x00000001) == 0x00000001)) {
+          if (((bitField0_ & 0x00000002) == 0x00000002)) {
             entries_ = java.util.Collections.unmodifiableList(entries_);
-            bitField0_ = (bitField0_ & ~0x00000001);
+            bitField0_ = (bitField0_ & ~0x00000002);
           }
           result.entries_ = entries_;
         } else {
           result.entries_ = entriesBuilder_.build();
         }
+        result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
       }
@@ -11504,11 +11556,14 @@ public final class ReplicatorMessages {
 
       public Builder mergeFrom(akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip other) {
         if (other == akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.getDefaultInstance()) return this;
+        if (other.hasSendBack()) {
+          setSendBack(other.getSendBack());
+        }
         if (entriesBuilder_ == null) {
           if (!other.entries_.isEmpty()) {
             if (entries_.isEmpty()) {
               entries_ = other.entries_;
-              bitField0_ = (bitField0_ & ~0x00000001);
+              bitField0_ = (bitField0_ & ~0x00000002);
             } else {
               ensureEntriesIsMutable();
               entries_.addAll(other.entries_);
@@ -11521,7 +11576,7 @@ public final class ReplicatorMessages {
               entriesBuilder_.dispose();
               entriesBuilder_ = null;
               entries_ = other.entries_;
-              bitField0_ = (bitField0_ & ~0x00000001);
+              bitField0_ = (bitField0_ & ~0x00000002);
               entriesBuilder_ = 
                 com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders ?
                    getEntriesFieldBuilder() : null;
@@ -11535,6 +11590,10 @@ public final class ReplicatorMessages {
       }
 
       public final boolean isInitialized() {
+        if (!hasSendBack()) {
+          
+          return false;
+        }
         for (int i = 0; i < getEntriesCount(); i++) {
           if (!getEntries(i).isInitialized()) {
             
@@ -11563,13 +11622,46 @@ public final class ReplicatorMessages {
       }
       private int bitField0_;
 
-      // repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;
+      // required bool sendBack = 1;
+      private boolean sendBack_ ;
+      /**
+       * <code>required bool sendBack = 1;</code>
+       */
+      public boolean hasSendBack() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>required bool sendBack = 1;</code>
+       */
+      public boolean getSendBack() {
+        return sendBack_;
+      }
+      /**
+       * <code>required bool sendBack = 1;</code>
+       */
+      public Builder setSendBack(boolean value) {
+        bitField0_ |= 0x00000001;
+        sendBack_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required bool sendBack = 1;</code>
+       */
+      public Builder clearSendBack() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        sendBack_ = false;
+        onChanged();
+        return this;
+      }
+
+      // repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;
       private java.util.List<akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry> entries_ =
         java.util.Collections.emptyList();
       private void ensureEntriesIsMutable() {
-        if (!((bitField0_ & 0x00000001) == 0x00000001)) {
+        if (!((bitField0_ & 0x00000002) == 0x00000002)) {
           entries_ = new java.util.ArrayList<akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry>(entries_);
-          bitField0_ |= 0x00000001;
+          bitField0_ |= 0x00000002;
          }
       }
 
@@ -11577,7 +11669,7 @@ public final class ReplicatorMessages {
           akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry, akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry.Builder, akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.EntryOrBuilder> entriesBuilder_;
 
       /**
-       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
        */
       public java.util.List<akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry> getEntriesList() {
         if (entriesBuilder_ == null) {
@@ -11587,7 +11679,7 @@ public final class ReplicatorMessages {
         }
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
        */
       public int getEntriesCount() {
         if (entriesBuilder_ == null) {
@@ -11597,7 +11689,7 @@ public final class ReplicatorMessages {
         }
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
        */
       public akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry getEntries(int index) {
         if (entriesBuilder_ == null) {
@@ -11607,7 +11699,7 @@ public final class ReplicatorMessages {
         }
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
        */
       public Builder setEntries(
           int index, akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry value) {
@@ -11624,7 +11716,7 @@ public final class ReplicatorMessages {
         return this;
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
        */
       public Builder setEntries(
           int index, akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry.Builder builderForValue) {
@@ -11638,7 +11730,7 @@ public final class ReplicatorMessages {
         return this;
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
        */
       public Builder addEntries(akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry value) {
         if (entriesBuilder_ == null) {
@@ -11654,7 +11746,7 @@ public final class ReplicatorMessages {
         return this;
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
        */
       public Builder addEntries(
           int index, akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry value) {
@@ -11671,7 +11763,7 @@ public final class ReplicatorMessages {
         return this;
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
        */
       public Builder addEntries(
           akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry.Builder builderForValue) {
@@ -11685,7 +11777,7 @@ public final class ReplicatorMessages {
         return this;
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
        */
       public Builder addEntries(
           int index, akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry.Builder builderForValue) {
@@ -11699,7 +11791,7 @@ public final class ReplicatorMessages {
         return this;
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
        */
       public Builder addAllEntries(
           java.lang.Iterable<? extends akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry> values) {
@@ -11713,12 +11805,12 @@ public final class ReplicatorMessages {
         return this;
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
        */
       public Builder clearEntries() {
         if (entriesBuilder_ == null) {
           entries_ = java.util.Collections.emptyList();
-          bitField0_ = (bitField0_ & ~0x00000001);
+          bitField0_ = (bitField0_ & ~0x00000002);
           onChanged();
         } else {
           entriesBuilder_.clear();
@@ -11726,7 +11818,7 @@ public final class ReplicatorMessages {
         return this;
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
        */
       public Builder removeEntries(int index) {
         if (entriesBuilder_ == null) {
@@ -11739,14 +11831,14 @@ public final class ReplicatorMessages {
         return this;
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
        */
       public akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry.Builder getEntriesBuilder(
           int index) {
         return getEntriesFieldBuilder().getBuilder(index);
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
        */
       public akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.EntryOrBuilder getEntriesOrBuilder(
           int index) {
@@ -11756,7 +11848,7 @@ public final class ReplicatorMessages {
         }
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
        */
       public java.util.List<? extends akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.EntryOrBuilder> 
            getEntriesOrBuilderList() {
@@ -11767,14 +11859,14 @@ public final class ReplicatorMessages {
         }
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
        */
       public akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry.Builder addEntriesBuilder() {
         return getEntriesFieldBuilder().addBuilder(
             akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry.getDefaultInstance());
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
        */
       public akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry.Builder addEntriesBuilder(
           int index) {
@@ -11782,7 +11874,7 @@ public final class ReplicatorMessages {
             index, akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry.getDefaultInstance());
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Gossip.Entry entries = 2;</code>
        */
       public java.util.List<akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry.Builder> 
            getEntriesBuilderList() {
@@ -11795,7 +11887,7 @@ public final class ReplicatorMessages {
           entriesBuilder_ = new com.google.protobuf.RepeatedFieldBuilder<
               akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry, akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.Entry.Builder, akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Gossip.EntryOrBuilder>(
                   entries_,
-                  ((bitField0_ & 0x00000001) == 0x00000001),
+                  ((bitField0_ & 0x00000002) == 0x00000002),
                   getParentForChildren(),
                   isClean());
           entries_ = null;
@@ -12429,60 +12521,30 @@ public final class ReplicatorMessages {
   public interface AddressOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
 
-    // required string system = 1;
+    // required string hostname = 1;
     /**
-     * <code>required string system = 1;</code>
-     */
-    boolean hasSystem();
-    /**
-     * <code>required string system = 1;</code>
-     */
-    java.lang.String getSystem();
-    /**
-     * <code>required string system = 1;</code>
-     */
-    com.google.protobuf.ByteString
-        getSystemBytes();
-
-    // required string hostname = 2;
-    /**
-     * <code>required string hostname = 2;</code>
+     * <code>required string hostname = 1;</code>
      */
     boolean hasHostname();
     /**
-     * <code>required string hostname = 2;</code>
+     * <code>required string hostname = 1;</code>
      */
     java.lang.String getHostname();
     /**
-     * <code>required string hostname = 2;</code>
+     * <code>required string hostname = 1;</code>
      */
     com.google.protobuf.ByteString
         getHostnameBytes();
 
-    // required uint32 port = 3;
+    // required uint32 port = 2;
     /**
-     * <code>required uint32 port = 3;</code>
+     * <code>required uint32 port = 2;</code>
      */
     boolean hasPort();
     /**
-     * <code>required uint32 port = 3;</code>
+     * <code>required uint32 port = 2;</code>
      */
     int getPort();
-
-    // optional string protocol = 4;
-    /**
-     * <code>optional string protocol = 4;</code>
-     */
-    boolean hasProtocol();
-    /**
-     * <code>optional string protocol = 4;</code>
-     */
-    java.lang.String getProtocol();
-    /**
-     * <code>optional string protocol = 4;</code>
-     */
-    com.google.protobuf.ByteString
-        getProtocolBytes();
   }
   /**
    * Protobuf type {@code akka.contrib.datareplication.Address}
@@ -12537,22 +12599,12 @@ public final class ReplicatorMessages {
             }
             case 10: {
               bitField0_ |= 0x00000001;
-              system_ = input.readBytes();
-              break;
-            }
-            case 18: {
-              bitField0_ |= 0x00000002;
               hostname_ = input.readBytes();
               break;
             }
-            case 24: {
-              bitField0_ |= 0x00000004;
+            case 16: {
+              bitField0_ |= 0x00000002;
               port_ = input.readUInt32();
-              break;
-            }
-            case 34: {
-              bitField0_ |= 0x00000008;
-              protocol_ = input.readBytes();
               break;
             }
           }
@@ -12595,60 +12647,17 @@ public final class ReplicatorMessages {
     }
 
     private int bitField0_;
-    // required string system = 1;
-    public static final int SYSTEM_FIELD_NUMBER = 1;
-    private java.lang.Object system_;
+    // required string hostname = 1;
+    public static final int HOSTNAME_FIELD_NUMBER = 1;
+    private java.lang.Object hostname_;
     /**
-     * <code>required string system = 1;</code>
+     * <code>required string hostname = 1;</code>
      */
-    public boolean hasSystem() {
+    public boolean hasHostname() {
       return ((bitField0_ & 0x00000001) == 0x00000001);
     }
     /**
-     * <code>required string system = 1;</code>
-     */
-    public java.lang.String getSystem() {
-      java.lang.Object ref = system_;
-      if (ref instanceof java.lang.String) {
-        return (java.lang.String) ref;
-      } else {
-        com.google.protobuf.ByteString bs = 
-            (com.google.protobuf.ByteString) ref;
-        java.lang.String s = bs.toStringUtf8();
-        if (bs.isValidUtf8()) {
-          system_ = s;
-        }
-        return s;
-      }
-    }
-    /**
-     * <code>required string system = 1;</code>
-     */
-    public com.google.protobuf.ByteString
-        getSystemBytes() {
-      java.lang.Object ref = system_;
-      if (ref instanceof java.lang.String) {
-        com.google.protobuf.ByteString b = 
-            com.google.protobuf.ByteString.copyFromUtf8(
-                (java.lang.String) ref);
-        system_ = b;
-        return b;
-      } else {
-        return (com.google.protobuf.ByteString) ref;
-      }
-    }
-
-    // required string hostname = 2;
-    public static final int HOSTNAME_FIELD_NUMBER = 2;
-    private java.lang.Object hostname_;
-    /**
-     * <code>required string hostname = 2;</code>
-     */
-    public boolean hasHostname() {
-      return ((bitField0_ & 0x00000002) == 0x00000002);
-    }
-    /**
-     * <code>required string hostname = 2;</code>
+     * <code>required string hostname = 1;</code>
      */
     public java.lang.String getHostname() {
       java.lang.Object ref = hostname_;
@@ -12665,7 +12674,7 @@ public final class ReplicatorMessages {
       }
     }
     /**
-     * <code>required string hostname = 2;</code>
+     * <code>required string hostname = 1;</code>
      */
     public com.google.protobuf.ByteString
         getHostnameBytes() {
@@ -12681,80 +12690,31 @@ public final class ReplicatorMessages {
       }
     }
 
-    // required uint32 port = 3;
-    public static final int PORT_FIELD_NUMBER = 3;
+    // required uint32 port = 2;
+    public static final int PORT_FIELD_NUMBER = 2;
     private int port_;
     /**
-     * <code>required uint32 port = 3;</code>
+     * <code>required uint32 port = 2;</code>
      */
     public boolean hasPort() {
-      return ((bitField0_ & 0x00000004) == 0x00000004);
+      return ((bitField0_ & 0x00000002) == 0x00000002);
     }
     /**
-     * <code>required uint32 port = 3;</code>
+     * <code>required uint32 port = 2;</code>
      */
     public int getPort() {
       return port_;
     }
 
-    // optional string protocol = 4;
-    public static final int PROTOCOL_FIELD_NUMBER = 4;
-    private java.lang.Object protocol_;
-    /**
-     * <code>optional string protocol = 4;</code>
-     */
-    public boolean hasProtocol() {
-      return ((bitField0_ & 0x00000008) == 0x00000008);
-    }
-    /**
-     * <code>optional string protocol = 4;</code>
-     */
-    public java.lang.String getProtocol() {
-      java.lang.Object ref = protocol_;
-      if (ref instanceof java.lang.String) {
-        return (java.lang.String) ref;
-      } else {
-        com.google.protobuf.ByteString bs = 
-            (com.google.protobuf.ByteString) ref;
-        java.lang.String s = bs.toStringUtf8();
-        if (bs.isValidUtf8()) {
-          protocol_ = s;
-        }
-        return s;
-      }
-    }
-    /**
-     * <code>optional string protocol = 4;</code>
-     */
-    public com.google.protobuf.ByteString
-        getProtocolBytes() {
-      java.lang.Object ref = protocol_;
-      if (ref instanceof java.lang.String) {
-        com.google.protobuf.ByteString b = 
-            com.google.protobuf.ByteString.copyFromUtf8(
-                (java.lang.String) ref);
-        protocol_ = b;
-        return b;
-      } else {
-        return (com.google.protobuf.ByteString) ref;
-      }
-    }
-
     private void initFields() {
-      system_ = "";
       hostname_ = "";
       port_ = 0;
-      protocol_ = "";
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
       if (isInitialized != -1) return isInitialized == 1;
 
-      if (!hasSystem()) {
-        memoizedIsInitialized = 0;
-        return false;
-      }
       if (!hasHostname()) {
         memoizedIsInitialized = 0;
         return false;
@@ -12771,16 +12731,10 @@ public final class ReplicatorMessages {
                         throws java.io.IOException {
       getSerializedSize();
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        output.writeBytes(1, getSystemBytes());
+        output.writeBytes(1, getHostnameBytes());
       }
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        output.writeBytes(2, getHostnameBytes());
-      }
-      if (((bitField0_ & 0x00000004) == 0x00000004)) {
-        output.writeUInt32(3, port_);
-      }
-      if (((bitField0_ & 0x00000008) == 0x00000008)) {
-        output.writeBytes(4, getProtocolBytes());
+        output.writeUInt32(2, port_);
       }
       getUnknownFields().writeTo(output);
     }
@@ -12793,19 +12747,11 @@ public final class ReplicatorMessages {
       size = 0;
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(1, getSystemBytes());
+          .computeBytesSize(1, getHostnameBytes());
       }
       if (((bitField0_ & 0x00000002) == 0x00000002)) {
         size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(2, getHostnameBytes());
-      }
-      if (((bitField0_ & 0x00000004) == 0x00000004)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeUInt32Size(3, port_);
-      }
-      if (((bitField0_ & 0x00000008) == 0x00000008)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(4, getProtocolBytes());
+          .computeUInt32Size(2, port_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -12923,14 +12869,10 @@ public final class ReplicatorMessages {
 
       public Builder clear() {
         super.clear();
-        system_ = "";
-        bitField0_ = (bitField0_ & ~0x00000001);
         hostname_ = "";
-        bitField0_ = (bitField0_ & ~0x00000002);
+        bitField0_ = (bitField0_ & ~0x00000001);
         port_ = 0;
-        bitField0_ = (bitField0_ & ~0x00000004);
-        protocol_ = "";
-        bitField0_ = (bitField0_ & ~0x00000008);
+        bitField0_ = (bitField0_ & ~0x00000002);
         return this;
       }
 
@@ -12962,19 +12904,11 @@ public final class ReplicatorMessages {
         if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
           to_bitField0_ |= 0x00000001;
         }
-        result.system_ = system_;
+        result.hostname_ = hostname_;
         if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
           to_bitField0_ |= 0x00000002;
         }
-        result.hostname_ = hostname_;
-        if (((from_bitField0_ & 0x00000004) == 0x00000004)) {
-          to_bitField0_ |= 0x00000004;
-        }
         result.port_ = port_;
-        if (((from_bitField0_ & 0x00000008) == 0x00000008)) {
-          to_bitField0_ |= 0x00000008;
-        }
-        result.protocol_ = protocol_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -12991,33 +12925,19 @@ public final class ReplicatorMessages {
 
       public Builder mergeFrom(akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Address other) {
         if (other == akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Address.getDefaultInstance()) return this;
-        if (other.hasSystem()) {
-          bitField0_ |= 0x00000001;
-          system_ = other.system_;
-          onChanged();
-        }
         if (other.hasHostname()) {
-          bitField0_ |= 0x00000002;
+          bitField0_ |= 0x00000001;
           hostname_ = other.hostname_;
           onChanged();
         }
         if (other.hasPort()) {
           setPort(other.getPort());
         }
-        if (other.hasProtocol()) {
-          bitField0_ |= 0x00000008;
-          protocol_ = other.protocol_;
-          onChanged();
-        }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
 
       public final boolean isInitialized() {
-        if (!hasSystem()) {
-          
-          return false;
-        }
         if (!hasHostname()) {
           
           return false;
@@ -13048,90 +12968,16 @@ public final class ReplicatorMessages {
       }
       private int bitField0_;
 
-      // required string system = 1;
-      private java.lang.Object system_ = "";
+      // required string hostname = 1;
+      private java.lang.Object hostname_ = "";
       /**
-       * <code>required string system = 1;</code>
+       * <code>required string hostname = 1;</code>
        */
-      public boolean hasSystem() {
+      public boolean hasHostname() {
         return ((bitField0_ & 0x00000001) == 0x00000001);
       }
       /**
-       * <code>required string system = 1;</code>
-       */
-      public java.lang.String getSystem() {
-        java.lang.Object ref = system_;
-        if (!(ref instanceof java.lang.String)) {
-          java.lang.String s = ((com.google.protobuf.ByteString) ref)
-              .toStringUtf8();
-          system_ = s;
-          return s;
-        } else {
-          return (java.lang.String) ref;
-        }
-      }
-      /**
-       * <code>required string system = 1;</code>
-       */
-      public com.google.protobuf.ByteString
-          getSystemBytes() {
-        java.lang.Object ref = system_;
-        if (ref instanceof String) {
-          com.google.protobuf.ByteString b = 
-              com.google.protobuf.ByteString.copyFromUtf8(
-                  (java.lang.String) ref);
-          system_ = b;
-          return b;
-        } else {
-          return (com.google.protobuf.ByteString) ref;
-        }
-      }
-      /**
-       * <code>required string system = 1;</code>
-       */
-      public Builder setSystem(
-          java.lang.String value) {
-        if (value == null) {
-    throw new NullPointerException();
-  }
-  bitField0_ |= 0x00000001;
-        system_ = value;
-        onChanged();
-        return this;
-      }
-      /**
-       * <code>required string system = 1;</code>
-       */
-      public Builder clearSystem() {
-        bitField0_ = (bitField0_ & ~0x00000001);
-        system_ = getDefaultInstance().getSystem();
-        onChanged();
-        return this;
-      }
-      /**
-       * <code>required string system = 1;</code>
-       */
-      public Builder setSystemBytes(
-          com.google.protobuf.ByteString value) {
-        if (value == null) {
-    throw new NullPointerException();
-  }
-  bitField0_ |= 0x00000001;
-        system_ = value;
-        onChanged();
-        return this;
-      }
-
-      // required string hostname = 2;
-      private java.lang.Object hostname_ = "";
-      /**
-       * <code>required string hostname = 2;</code>
-       */
-      public boolean hasHostname() {
-        return ((bitField0_ & 0x00000002) == 0x00000002);
-      }
-      /**
-       * <code>required string hostname = 2;</code>
+       * <code>required string hostname = 1;</code>
        */
       public java.lang.String getHostname() {
         java.lang.Object ref = hostname_;
@@ -13145,7 +12991,7 @@ public final class ReplicatorMessages {
         }
       }
       /**
-       * <code>required string hostname = 2;</code>
+       * <code>required string hostname = 1;</code>
        */
       public com.google.protobuf.ByteString
           getHostnameBytes() {
@@ -13161,144 +13007,70 @@ public final class ReplicatorMessages {
         }
       }
       /**
-       * <code>required string hostname = 2;</code>
+       * <code>required string hostname = 1;</code>
        */
       public Builder setHostname(
           java.lang.String value) {
         if (value == null) {
     throw new NullPointerException();
   }
-  bitField0_ |= 0x00000002;
+  bitField0_ |= 0x00000001;
         hostname_ = value;
         onChanged();
         return this;
       }
       /**
-       * <code>required string hostname = 2;</code>
+       * <code>required string hostname = 1;</code>
        */
       public Builder clearHostname() {
-        bitField0_ = (bitField0_ & ~0x00000002);
+        bitField0_ = (bitField0_ & ~0x00000001);
         hostname_ = getDefaultInstance().getHostname();
         onChanged();
         return this;
       }
       /**
-       * <code>required string hostname = 2;</code>
+       * <code>required string hostname = 1;</code>
        */
       public Builder setHostnameBytes(
           com.google.protobuf.ByteString value) {
         if (value == null) {
     throw new NullPointerException();
   }
-  bitField0_ |= 0x00000002;
+  bitField0_ |= 0x00000001;
         hostname_ = value;
         onChanged();
         return this;
       }
 
-      // required uint32 port = 3;
+      // required uint32 port = 2;
       private int port_ ;
       /**
-       * <code>required uint32 port = 3;</code>
+       * <code>required uint32 port = 2;</code>
        */
       public boolean hasPort() {
-        return ((bitField0_ & 0x00000004) == 0x00000004);
+        return ((bitField0_ & 0x00000002) == 0x00000002);
       }
       /**
-       * <code>required uint32 port = 3;</code>
+       * <code>required uint32 port = 2;</code>
        */
       public int getPort() {
         return port_;
       }
       /**
-       * <code>required uint32 port = 3;</code>
+       * <code>required uint32 port = 2;</code>
        */
       public Builder setPort(int value) {
-        bitField0_ |= 0x00000004;
+        bitField0_ |= 0x00000002;
         port_ = value;
         onChanged();
         return this;
       }
       /**
-       * <code>required uint32 port = 3;</code>
+       * <code>required uint32 port = 2;</code>
        */
       public Builder clearPort() {
-        bitField0_ = (bitField0_ & ~0x00000004);
+        bitField0_ = (bitField0_ & ~0x00000002);
         port_ = 0;
-        onChanged();
-        return this;
-      }
-
-      // optional string protocol = 4;
-      private java.lang.Object protocol_ = "";
-      /**
-       * <code>optional string protocol = 4;</code>
-       */
-      public boolean hasProtocol() {
-        return ((bitField0_ & 0x00000008) == 0x00000008);
-      }
-      /**
-       * <code>optional string protocol = 4;</code>
-       */
-      public java.lang.String getProtocol() {
-        java.lang.Object ref = protocol_;
-        if (!(ref instanceof java.lang.String)) {
-          java.lang.String s = ((com.google.protobuf.ByteString) ref)
-              .toStringUtf8();
-          protocol_ = s;
-          return s;
-        } else {
-          return (java.lang.String) ref;
-        }
-      }
-      /**
-       * <code>optional string protocol = 4;</code>
-       */
-      public com.google.protobuf.ByteString
-          getProtocolBytes() {
-        java.lang.Object ref = protocol_;
-        if (ref instanceof String) {
-          com.google.protobuf.ByteString b = 
-              com.google.protobuf.ByteString.copyFromUtf8(
-                  (java.lang.String) ref);
-          protocol_ = b;
-          return b;
-        } else {
-          return (com.google.protobuf.ByteString) ref;
-        }
-      }
-      /**
-       * <code>optional string protocol = 4;</code>
-       */
-      public Builder setProtocol(
-          java.lang.String value) {
-        if (value == null) {
-    throw new NullPointerException();
-  }
-  bitField0_ |= 0x00000008;
-        protocol_ = value;
-        onChanged();
-        return this;
-      }
-      /**
-       * <code>optional string protocol = 4;</code>
-       */
-      public Builder clearProtocol() {
-        bitField0_ = (bitField0_ & ~0x00000008);
-        protocol_ = getDefaultInstance().getProtocol();
-        onChanged();
-        return this;
-      }
-      /**
-       * <code>optional string protocol = 4;</code>
-       */
-      public Builder setProtocolBytes(
-          com.google.protobuf.ByteString value) {
-        if (value == null) {
-    throw new NullPointerException();
-  }
-  bitField0_ |= 0x00000008;
-        protocol_ = value;
         onChanged();
         return this;
       }
@@ -14538,19 +14310,19 @@ public final class ReplicatorMessages {
       "atareplication.Address\"k\n\006Status\022;\n\007entr" +
       "ies\030\001 \003(\0132*.akka.contrib.datareplication" +
       ".Status.Entry\032$\n\005Entry\022\013\n\003key\030\001 \002(\t\022\016\n\006d" +
-      "igest\030\002 \002(\014\"\231\001\n\006Gossip\022;\n\007entries\030\001 \003(\0132" +
-      "*.akka.contrib.datareplication.Gossip.En" +
-      "try\032R\n\005Entry\022\013\n\003key\030\001 \002(\t\022<\n\010envelope\030\002 " +
-      "\002(\0132*.akka.contrib.datareplication.DataE" +
-      "nvelope\"T\n\rUniqueAddress\0226\n\007address\030\001 \002(" +
-      "\0132%.akka.contrib.datareplication.Address" +
-      "\022\013\n\003uid\030\002 \002(\r\"K\n\007Address\022\016\n\006system\030\001 \002(\t",
-      "\022\020\n\010hostname\030\002 \002(\t\022\014\n\004port\030\003 \002(\r\022\020\n\010prot" +
-      "ocol\030\004 \001(\t\"V\n\014OtherMessage\022\027\n\017enclosedMe" +
-      "ssage\030\001 \002(\014\022\024\n\014serializerId\030\002 \002(\005\022\027\n\017mes" +
-      "sageManifest\030\004 \001(\014\"\036\n\nStringGSet\022\020\n\010elem" +
-      "ents\030\001 \003(\tB-\n)akka.contrib.datareplicati" +
-      "on.protobuf.msgH\001"
+      "igest\030\002 \002(\014\"\253\001\n\006Gossip\022\020\n\010sendBack\030\001 \002(\010" +
+      "\022;\n\007entries\030\002 \003(\0132*.akka.contrib.datarep" +
+      "lication.Gossip.Entry\032R\n\005Entry\022\013\n\003key\030\001 " +
+      "\002(\t\022<\n\010envelope\030\002 \002(\0132*.akka.contrib.dat" +
+      "areplication.DataEnvelope\"T\n\rUniqueAddre" +
+      "ss\0226\n\007address\030\001 \002(\0132%.akka.contrib.datar" +
+      "eplication.Address\022\013\n\003uid\030\002 \002(\r\")\n\007Addre",
+      "ss\022\020\n\010hostname\030\001 \002(\t\022\014\n\004port\030\002 \002(\r\"V\n\014Ot" +
+      "herMessage\022\027\n\017enclosedMessage\030\001 \002(\014\022\024\n\014s" +
+      "erializerId\030\002 \002(\005\022\027\n\017messageManifest\030\004 \001" +
+      "(\014\"\036\n\nStringGSet\022\020\n\010elements\030\001 \003(\tB-\n)ak" +
+      "ka.contrib.datareplication.protobuf.msgH" +
+      "\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -14652,7 +14424,7 @@ public final class ReplicatorMessages {
           internal_static_akka_contrib_datareplication_Gossip_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_akka_contrib_datareplication_Gossip_descriptor,
-              new java.lang.String[] { "Entries", });
+              new java.lang.String[] { "SendBack", "Entries", });
           internal_static_akka_contrib_datareplication_Gossip_Entry_descriptor =
             internal_static_akka_contrib_datareplication_Gossip_descriptor.getNestedTypes().get(0);
           internal_static_akka_contrib_datareplication_Gossip_Entry_fieldAccessorTable = new
@@ -14670,7 +14442,7 @@ public final class ReplicatorMessages {
           internal_static_akka_contrib_datareplication_Address_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_akka_contrib_datareplication_Address_descriptor,
-              new java.lang.String[] { "System", "Hostname", "Port", "Protocol", });
+              new java.lang.String[] { "Hostname", "Port", });
           internal_static_akka_contrib_datareplication_OtherMessage_descriptor =
             getDescriptor().getMessageTypes().get(16);
           internal_static_akka_contrib_datareplication_OtherMessage_fieldAccessorTable = new

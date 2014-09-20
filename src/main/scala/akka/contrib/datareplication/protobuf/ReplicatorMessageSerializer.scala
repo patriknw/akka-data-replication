@@ -25,6 +25,10 @@ import akka.cluster.UniqueAddress
  */
 class ReplicatorMessageSerializer(val system: ExtendedActorSystem) extends Serializer with SerializationSupport {
 
+  override def includeManifest: Boolean = true
+
+  override def identifier = 99901
+
   private val fromBinaryMap = collection.immutable.HashMap[Class[_ <: ReplicatorMessage], Array[Byte] ⇒ AnyRef](
     classOf[Get] -> getFromBinary,
     classOf[GetSuccess] -> getSuccessFromBinary,
@@ -40,10 +44,6 @@ class ReplicatorMessageSerializer(val system: ExtendedActorSystem) extends Seria
     classOf[ReadResult] -> readResultFromBinary,
     classOf[Status] -> statusFromBinary,
     classOf[Gossip] -> gossipFromBinary)
-
-  def includeManifest: Boolean = true
-
-  def identifier = 99901
 
   def toBinary(obj: AnyRef): Array[Byte] = obj match {
     case m: DataEnvelope ⇒ dataEnvelopeToProto(m).toByteArray
@@ -92,7 +92,7 @@ class ReplicatorMessageSerializer(val system: ExtendedActorSystem) extends Seria
   }
 
   private def gossipToProto(gossip: Gossip): dm.Gossip = {
-    val b = dm.Gossip.newBuilder()
+    val b = dm.Gossip.newBuilder().setSendBack(gossip.sendBack)
     val entries = gossip.updatedData.foreach {
       case (key, data) ⇒
         b.addEntries(dm.Gossip.Entry.newBuilder().
@@ -105,7 +105,8 @@ class ReplicatorMessageSerializer(val system: ExtendedActorSystem) extends Seria
   private def gossipFromBinary(bytes: Array[Byte]): Gossip = {
     val gossip = dm.Gossip.parseFrom(decompress(bytes))
     Gossip(gossip.getEntriesList.asScala.map(e ⇒
-      e.getKey -> dataEnvelopeFromProto(e.getEnvelope))(breakOut))
+      e.getKey -> dataEnvelopeFromProto(e.getEnvelope))(breakOut),
+      sendBack = gossip.getSendBack)
   }
 
   private def getToProto(get: Get): dm.Get = {

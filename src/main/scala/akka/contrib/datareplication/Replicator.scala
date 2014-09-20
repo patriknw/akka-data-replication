@@ -42,10 +42,11 @@ object Replicator {
   def props(
     role: Option[String],
     gossipInterval: FiniteDuration = 2.second,
+    notifySubscribersInterval: FiniteDuration = 500.millis,
     maxDeltaElements: Int = 1000,
     pruningInterval: FiniteDuration = 30.seconds,
     maxPruningDissemination: FiniteDuration = 60.seconds): Props =
-    Props(new Replicator(role, gossipInterval, maxDeltaElements, pruningInterval, maxPruningDissemination))
+    Props(new Replicator(role, gossipInterval, notifySubscribersInterval, maxDeltaElements, pruningInterval, maxPruningDissemination))
 
   /**
    * Java API: Factory method for the [[akka.actor.Props]] of the [[Replicator]] actor
@@ -142,10 +143,14 @@ object Replicator {
 
   object Get {
     /**
-     * `Get` value from local `Replicator`, i.e. `ReadOne`
-     * consistency.
+     * `Get` value from local `Replicator`, i.e. `ReadOne` consistency.
      */
     def apply(key: String): Get = Get(key, ReadOne, Duration.Zero, None)
+
+    /**
+     * `Get` value from local `Replicator`, i.e. `ReadOne` consistency.
+     */
+    def apply(key: String, request: Option[Any]): Get = Get(key, ReadOne, Duration.Zero, request)
   }
   /**
    * Send this message to the local `Replicator` to retrieve a data value for the
@@ -361,6 +366,7 @@ object Replicator {
   private[akka] object Internal {
 
     case object GossipTick
+    case object NotifySubscribersTick
     case object RemovedNodePruningTick
     case object ClockTick
     case class Write(key: String, envelope: DataEnvelope) extends ReplicatorMessage
@@ -375,7 +381,9 @@ object Replicator {
     // Gossip Status message contains SHA-1 digests of the data to determine when
     // to send the full data
     type Digest = ByteString
-    val deletedDigest: Digest = ByteString.empty
+    val DeletedDigest: Digest = ByteString.empty
+    val LazyDigest: Digest = ByteString(0)
+    val NotFoundDigest: Digest = ByteString(-1)
 
     case class DataEnvelope(
       data: ReplicatedData,
@@ -446,7 +454,7 @@ object Replicator {
     }
 
     case class Status(digests: Map[String, Digest]) extends ReplicatorMessage
-    case class Gossip(updatedData: Map[String, DataEnvelope]) extends ReplicatorMessage
+    case class Gossip(updatedData: Map[String, DataEnvelope], sendBack: Boolean) extends ReplicatorMessage
 
     // Testing purpose
     case object GetNodeCount
@@ -632,6 +640,7 @@ object Replicator {
 class Replicator(
   role: Option[String],
   gossipInterval: FiniteDuration,
+  notifySubscribersInterval: FiniteDuration,
   maxDeltaElements: Int,
   pruningInterval: FiniteDuration,
   maxPruningDissemination: FiniteDuration) extends Actor with ActorLogging {
@@ -651,6 +660,7 @@ class Replicator(
   //Start periodic gossip to random nodes in cluster
   import context.dispatcher
   val gossipTask = context.system.scheduler.schedule(gossipInterval, gossipInterval, self, GossipTick)
+  val notifyTask = context.system.scheduler.schedule(notifySubscribersInterval, notifySubscribersInterval, self, NotifySubscribersTick)
   val pruningTask = context.system.scheduler.schedule(pruningInterval, pruningInterval, self, RemovedNodePruningTick)
   val clockTask = context.system.scheduler.schedule(gossipInterval, gossipInterval, self, ClockTick)
 
@@ -675,6 +685,7 @@ class Replicator(
   var unreachable = Set.empty[Address]
 
   var dataEntries = Map.empty[String, (DataEnvelope, Digest)]
+  var changed = Map.empty[String, Digest]
 
   var subscribers = Map.empty[String, Set[ActorRef]]
 
@@ -707,8 +718,9 @@ class Replicator(
     case GetKeys                                       ⇒ receiveGetKeys()
     case Delete(key, consistency, timeout)             ⇒ receiveDelete(key, consistency, timeout, sender())
     case GossipTick                                    ⇒ receiveGossipTick()
+    case NotifySubscribersTick                         ⇒ receiveNotifySubscribersTick()
     case Status(otherDigests)                          ⇒ receiveStatus(otherDigests)
-    case Gossip(updatedData)                           ⇒ receiveGossip(updatedData)
+    case Gossip(updatedData, sendBack)                 ⇒ receiveGossip(updatedData, sendBack)
     case Subscribe(key, subscriber)                    ⇒ receiveSubscribe(key, subscriber)
     case Unsubscribe(key, subscriber)                  ⇒ receiveUnsubscribe(key, subscriber)
     case Terminated(ref)                               ⇒ receiveTerminated(ref)
@@ -737,7 +749,7 @@ class Replicator(
       }
       replyTo ! reply
     } else
-      context.actorOf(Props(classOf[ReadAggregator], key, consistency, timeout, req, nodes, localValue, replyTo))
+      context.actorOf(ReadAggregator.props(key, consistency, timeout, req, nodes, localValue, replyTo))
   }
 
   def receiveRead(key: String): Unit = {
@@ -771,8 +783,7 @@ class Replicator(
               if (writeConsistency == WriteOne)
                 replyTo ! UpdateSuccess(key, req)
               else
-                context.actorOf(Props(classOf[WriteAggregator], key, merged, writeConsistency, timeout, req,
-                  nodes, replyTo))
+                context.actorOf(WriteAggregator.props(key, merged, writeConsistency, timeout, req, nodes, replyTo))
             case Failure(e) ⇒
               replyTo ! e
           }
@@ -792,8 +803,7 @@ class Replicator(
       // is completed.
       log.debug("Received Update for key [{}], reading from [{}]", key, readConsistency)
       val req2 = Some(UpdateInProgress(Update(key, readConsistency, writeConsistency, timeout, req)(modify), replyTo))
-      // FIXME props factory methods
-      context.actorOf(Props(classOf[ReadAggregator], key, readConsistency, timeout, req2, nodes, localValue, self))
+      context.actorOf(ReadAggregator.props(key, readConsistency, timeout, req2, nodes, localValue, self))
       if (updateInProgressBuffer.isEmpty)
         context.become(updateInProgressReceive)
       if (!updateInProgressBuffer.contains(key))
@@ -919,41 +929,63 @@ class Replicator(
         if (consistency == WriteOne)
           replyTo ! DeleteSuccess(key)
         else
-          context.actorOf(Props(classOf[WriteAggregator], key, merged, consistency, timeout, None,
-            nodes, replyTo))
+          context.actorOf(WriteAggregator.props(key, merged, consistency, timeout, None, nodes, replyTo))
       case Failure(e) ⇒
         replyTo ! e
     }
   }
 
   def setData(key: String, envelope: DataEnvelope): Unit = {
-    val digest =
-      if (envelope.data == DeletedData) deletedDigest
-      else {
-        val bytes = serializer.toBinary(envelope)
-        ByteString.fromArray(MessageDigest.getInstance("SHA-1").digest(bytes))
-      }
+    val dig = if (envelope.data == DeletedData) DeletedDigest else LazyDigest
 
-    // notify subscribers, when changed
-    subscribers.get(key) foreach { s ⇒
+    // notify subscribers, later
+    if (subscribers.contains(key) && !changed.contains(key)) {
+      val newDigest = if (envelope.data == DeletedData) DeletedDigest else ByteString.fromArray(MessageDigest.getInstance("SHA-1").digest(serializer.toBinary(envelope)))
       val oldDigest = getDigest(key)
-      if (oldDigest.isEmpty || digest != oldDigest.get) {
-        val msg = if (envelope.data == DeletedData) DataDeleted(key) else Changed(key, envelope.data)
-        s foreach { _ ! msg }
-      }
+      changed = changed.updated(key, oldDigest)
     }
 
-    dataEntries = dataEntries.updated(key, (envelope, digest))
+    dataEntries = dataEntries.updated(key, (envelope, dig))
+  }
+
+  def getDigest(key: String): Digest = {
+    dataEntries.get(key) match {
+      case Some((envelope @ DataEnvelope(_, _), LazyDigest)) =>
+        val d = digest(envelope)
+        dataEntries = dataEntries.updated(key, (envelope, d))
+        d
+      case Some((_, digest)) => digest
+      case None              => NotFoundDigest
+    }
+  }
+
+  def digest(envelope: DataEnvelope): Digest = {
+    val bytes = serializer.toBinary(envelope)
+    ByteString.fromArray(MessageDigest.getInstance("SHA-1").digest(bytes))
   }
 
   def getData(key: String): Option[DataEnvelope] = dataEntries.get(key).map { case (envelope, _) ⇒ envelope }
 
-  def getDigest(key: String): Option[Digest] = dataEntries.get(key).map { case (_, digest) ⇒ digest }
+  def receiveNotifySubscribersTick(): Unit = {
+    if (subscribers.nonEmpty) {
+      for ((key, oldDigest) <- changed; subs <- subscribers.get(key)) {
+        if (oldDigest != getDigest(key)) {
+          getData(key) match {
+            case Some(envelope) =>
+              val msg = if (envelope.data == DeletedData) DataDeleted(key) else Changed(key, envelope.data)
+              subs foreach { _ ! msg }
+            case None =>
+          }
+        }
+      }
+    }
+    changed = Map.empty[String, Digest]
+  }
 
   def receiveGossipTick(): Unit = selectRandomNode(nodes.toVector) foreach gossipTo
 
   def gossipTo(address: Address): Unit =
-    replica(address) ! Status(dataEntries.map { case (key, (_, digest)) ⇒ (key, digest) })
+    replica(address) ! Status(dataEntries.map { case (key, (_, _)) ⇒ (key, getDigest(key)) })
 
   def selectRandomNode(addresses: immutable.IndexedSeq[Address]): Option[Address] =
     if (addresses.isEmpty) None else Some(addresses(ThreadLocalRandom.current nextInt addresses.size))
@@ -966,31 +998,37 @@ class Replicator(
       log.debug("Received gossip status from [{}], containing [{}]", sender().path.address,
         otherDigests.keys.mkString(", "))
 
-    def isOtherOutdated(key: String, otherDigest: Digest): Boolean =
-      getDigest(key) match {
-        case Some(digest) if digest != otherDigest ⇒ true
-        case _                                     ⇒ false
-      }
-    val otherOutdatedKeys = otherDigests.collect {
-      case (key, otherV) if isOtherOutdated(key, otherV) ⇒ key
+    def isOtherDifferent(key: String, otherDigest: Digest): Boolean = {
+      val d = getDigest(key)
+      d != NotFoundDigest && d != otherDigest
+    }
+    val otherDifferentKeys = otherDigests.collect {
+      case (key, otherDigest) if isOtherDifferent(key, otherDigest) ⇒ key
     }
     val otherMissingKeys = dataEntries.keySet -- otherDigests.keySet
-    val keys = (otherMissingKeys ++ otherOutdatedKeys).take(maxDeltaElements)
+    val keys = (otherMissingKeys ++ otherDifferentKeys).take(maxDeltaElements)
     if (keys.nonEmpty) {
       if (log.isDebugEnabled)
-        log.debug("Sending gossip to [{}], containing [{}]", sender().path.address,
-          keys.mkString(", "))
-      val g = Gossip(keys.map(k ⇒ k -> getData(k).get)(collection.breakOut))
+        log.debug("Sending gossip to [{}], containing [{}]", sender().path.address, keys.mkString(", "))
+      val g = Gossip(keys.map(k ⇒ k -> getData(k).get)(collection.breakOut), sendBack = otherDifferentKeys.nonEmpty)
       sender() ! g
     }
   }
 
-  def receiveGossip(updatedData: Map[String, DataEnvelope]): Unit = {
+  def receiveGossip(updatedData: Map[String, DataEnvelope], sendBack: Boolean): Unit = {
     if (log.isDebugEnabled)
       log.debug("Received gossip from [{}], containing [{}]", sender().path.address, updatedData.keys.mkString(", "))
+    var replyData = Map.empty[String, DataEnvelope]
     updatedData.foreach {
-      case (key, envelope) ⇒ write(key, envelope)
+      case (key, envelope) ⇒
+        write(key, envelope)
+        if (sendBack) getData(key) match {
+          case Some(d) => replyData = replyData.updated(key, d)
+          case None    =>
+        }
     }
+    if (sendBack)
+      sender() ! Gossip(replyData, sendBack = false)
   }
 
   def receiveSubscribe(key: String, subscriber: ActorRef): Unit = {
@@ -1176,18 +1214,41 @@ class Replicator(
 /**
  * INTERNAL API
  */
+private[akka] object ReadWriteAggregator {
+  object SendToSecondary
+  val MaxSecondaryNodes = 10
+}
+
+/**
+ * INTERNAL API
+ */
 private[akka] abstract class ReadWriteAggregator extends Actor {
   import Replicator.Internal._
+  import ReadWriteAggregator._
 
   def timeout: FiniteDuration
   def nodes: Set[Address]
 
   import context.dispatcher
+  var sendToSecondarySchedule = context.system.scheduler.scheduleOnce(timeout / 5, self, SendToSecondary)
   var timeoutSchedule = context.system.scheduler.scheduleOnce(timeout, self, ReceiveTimeout)
 
   var remaining = nodes
 
+  def doneWhenRemainingSize: Int
+
+  lazy val (primaryNodes, secondaryNodes) = {
+    val primarySize = nodes.size - doneWhenRemainingSize
+    if (primarySize >= nodes.size)
+      (nodes, Set.empty[Address])
+    else {
+      val (p, s) = scala.util.Random.shuffle(nodes.toVector).splitAt(primarySize)
+      (p, s.take(MaxSecondaryNodes))
+    }
+  }
+
   override def postStop(): Unit = {
+    sendToSecondarySchedule.cancel()
     timeoutSchedule.cancel()
   }
 
@@ -1209,8 +1270,24 @@ private[akka] abstract class ReadWriteAggregator extends Actor {
     case WriteAck | _: ReadResult ⇒
       remaining -= sender().path.address
       if (remaining.isEmpty) context.stop(self)
-    case ReceiveTimeout ⇒ context.stop(self)
+    case SendToSecondary =>
+    case ReceiveTimeout  ⇒ context.stop(self)
   }
+}
+
+/**
+ * INTERNAL API
+ */
+private[akka] object WriteAggregator {
+  def props(
+    key: String,
+    envelope: Replicator.Internal.DataEnvelope,
+    consistency: Replicator.WriteConsistency,
+    timeout: FiniteDuration,
+    req: Option[Any],
+    nodes: Set[Address],
+    replyTo: ActorRef): Props =
+    Props(new WriteAggregator(key, envelope, consistency, timeout, req, nodes, replyTo))
 }
 
 /**
@@ -1227,8 +1304,9 @@ private[akka] class WriteAggregator(
 
   import Replicator._
   import Replicator.Internal._
+  import ReadWriteAggregator._
 
-  val doneWhenRemainingSize = consistency match {
+  override val doneWhenRemainingSize = consistency match {
     case WriteTo(n) ⇒ nodes.size - (n - 1)
     case WriteAll   ⇒ 0
     case WriteQuorum ⇒
@@ -1240,10 +1318,10 @@ private[akka] class WriteAggregator(
       }
   }
 
+  val writeMsg = Write(key, envelope)
+
   override def preStart(): Unit = {
-    // FIXME perhaps not send to all, e.g. for WriteTwo we could start with less
-    val writeMsg = Write(key, envelope)
-    nodes.foreach { replica(_) ! writeMsg }
+    primaryNodes foreach { replica(_) ! writeMsg }
 
     if (remaining.size == doneWhenRemainingSize)
       reply(ok = true)
@@ -1256,6 +1334,8 @@ private[akka] class WriteAggregator(
       remaining -= sender().path.address
       if (remaining.size == doneWhenRemainingSize)
         reply(ok = true)
+    case SendToSecondary =>
+      secondaryNodes foreach { replica(_) ! writeMsg }
     case ReceiveTimeout ⇒ reply(ok = false)
   }
 
@@ -1275,6 +1355,21 @@ private[akka] class WriteAggregator(
 /**
  * INTERNAL API
  */
+private[akka] object ReadAggregator {
+  def props(
+    key: String,
+    consistency: Replicator.ReadConsistency,
+    timeout: FiniteDuration,
+    req: Option[Any],
+    nodes: Set[Address],
+    localValue: Option[Replicator.Internal.DataEnvelope],
+    replyTo: ActorRef): Props =
+    Props(new ReadAggregator(key, consistency, timeout, req, nodes, localValue, replyTo))
+}
+
+/**
+ * INTERNAL API
+ */
 private[akka] class ReadAggregator(
   key: String,
   consistency: Replicator.ReadConsistency,
@@ -1286,9 +1381,10 @@ private[akka] class ReadAggregator(
 
   import Replicator._
   import Replicator.Internal._
+  import ReadWriteAggregator._
 
   var result = localValue
-  val doneWhenRemainingSize = consistency match {
+  override val doneWhenRemainingSize = consistency match {
     case ReadFrom(n) ⇒ nodes.size - (n - 1)
     case ReadAll     ⇒ 0
     case ReadQuorum ⇒
@@ -1300,10 +1396,10 @@ private[akka] class ReadAggregator(
       }
   }
 
+  val readMsg = Read(key)
+
   override def preStart(): Unit = {
-    // FIXME perhaps not send to all, e.g. for ReadTwo we could start with less
-    val readMsg = Read(key)
-    nodes.foreach { replica(_) ! readMsg }
+    primaryNodes foreach { replica(_) ! readMsg }
 
     if (remaining.size == doneWhenRemainingSize)
       reply(ok = true)
@@ -1322,6 +1418,8 @@ private[akka] class ReadAggregator(
       remaining -= sender().path.address
       if (remaining.size == doneWhenRemainingSize)
         reply(ok = true)
+    case SendToSecondary =>
+      secondaryNodes foreach { replica(_) ! readMsg }
     case ReceiveTimeout ⇒ reply(ok = false)
   }
 
@@ -1349,6 +1447,8 @@ private[akka] class ReadAggregator(
     case _: ReadResult ⇒
       // collect late replies
       remaining -= sender().path.address
+    case SendToSecondary =>
+    case ReceiveTimeout  =>
   }
 }
 
