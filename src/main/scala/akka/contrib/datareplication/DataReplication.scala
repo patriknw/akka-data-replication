@@ -30,17 +30,13 @@ object DataReplication extends ExtensionId[DataReplication] with ExtensionIdProv
 class DataReplication(system: ExtendedActorSystem) extends Extension {
 
   private val config = system.settings.config.getConfig("akka.contrib.data-replication")
-
-  private val role: Option[String] = config.getString("role") match {
-    case "" ⇒ None
-    case r  ⇒ Some(r)
-  }
+  private val settings = ReplicatorSettings(config)
 
   /**
    * Returns true if this member is not tagged with the role configured for the
    * replicas.
    */
-  def isTerminated: Boolean = Cluster(system).isTerminated || !role.forall(Cluster(system).selfRoles.contains)
+  def isTerminated: Boolean = Cluster(system).isTerminated || !settings.role.forall(Cluster(system).selfRoles.contains)
 
   /**
    * `ActorRef` of the [[Replicator]] .
@@ -51,13 +47,6 @@ class DataReplication(system: ExtendedActorSystem) extends Extension {
       system.deadLetters
     } else {
       val name = config.getString("name")
-      val gossipInterval = config.getDuration("gossip-interval", MILLISECONDS).millis
-      val notifySubscribersInterval = config.getDuration("notify-subscribers-interval", MILLISECONDS).millis
-      val maxDeltaElements = config.getInt("max-delta-elements")
-      val pruningInterval = config.getDuration("pruning-interval", MILLISECONDS).millis
-      val maxPruningDissemination = config.getDuration("max-pruning-dissemination", MILLISECONDS).millis
-
-      system.actorOf(Replicator.props(role, gossipInterval, notifySubscribersInterval, maxDeltaElements,
-        pruningInterval, maxPruningDissemination), name)
+      system.actorOf(Replicator.props(settings), name)
     }
 }

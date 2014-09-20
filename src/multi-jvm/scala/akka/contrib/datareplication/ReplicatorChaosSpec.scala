@@ -44,7 +44,8 @@ class ReplicatorChaosSpec extends MultiNodeSpec(ReplicatorChaosSpec) with STMult
   override def initialParticipants = roles.size
 
   implicit val cluster = Cluster(system)
-  val replicator = system.actorOf(Replicator.props(role = Some("backend"), gossipInterval = 1.second), "replicator")
+  val replicator = system.actorOf(Replicator.props(
+    ReplicatorSettings(role = Some("backend"), gossipInterval = 1.second)), "replicator")
   val timeout = 3.seconds.dilated
 
   def join(from: RoleName, to: RoleName): Unit = {

@@ -39,8 +39,9 @@ class ReplicatorPruningSpec extends MultiNodeSpec(ReplicatorPruningSpec) with ST
 
   implicit val cluster = Cluster(system)
   val maxPruningDissemination = 3.seconds
-  val replicator = system.actorOf(Replicator.props(role = None, gossipInterval = 1.second,
-    pruningInterval = 1.second, maxPruningDissemination = maxPruningDissemination), "replicator")
+  val replicator = system.actorOf(Replicator.props(
+    ReplicatorSettings(role = None, gossipInterval = 1.second, pruningInterval = 1.second,
+      maxPruningDissemination = maxPruningDissemination)), "replicator")
   val timeout = 2.seconds.dilated
 
   def join(from: RoleName, to: RoleName): Unit = {

@@ -32,6 +32,31 @@ import akka.cluster.ClusterEvent.InitialStateAsEvents
 import akka.actor.Address
 import akka.actor.Terminated
 import scala.collection.immutable.Queue
+import com.typesafe.config.Config
+
+object ReplicatorSettings {
+  def apply(config: Config): ReplicatorSettings = {
+    val role: Option[String] = config.getString("role") match {
+      case "" ⇒ None
+      case r  ⇒ Some(r)
+    }
+    ReplicatorSettings(
+      role = role,
+      gossipInterval = config.getDuration("gossip-interval", MILLISECONDS).millis,
+      notifySubscribersInterval = config.getDuration("notify-subscribers-interval", MILLISECONDS).millis,
+      maxDeltaElements = config.getInt("max-delta-elements"),
+      pruningInterval = config.getDuration("pruning-interval", MILLISECONDS).millis,
+      maxPruningDissemination = config.getDuration("max-pruning-dissemination", MILLISECONDS).millis)
+  }
+}
+
+case class ReplicatorSettings(
+  role: Option[String],
+  gossipInterval: FiniteDuration = 2.second,
+  notifySubscribersInterval: FiniteDuration = 500.millis,
+  maxDeltaElements: Int = 1000,
+  pruningInterval: FiniteDuration = 30.seconds,
+  maxPruningDissemination: FiniteDuration = 60.seconds)
 
 object Replicator {
 
@@ -41,13 +66,8 @@ object Replicator {
    * Use `Option.apply` to create the `Option` from Java.
    */
   def props(
-    role: Option[String],
-    gossipInterval: FiniteDuration = 2.second,
-    notifySubscribersInterval: FiniteDuration = 500.millis,
-    maxDeltaElements: Int = 1000,
-    pruningInterval: FiniteDuration = 30.seconds,
-    maxPruningDissemination: FiniteDuration = 60.seconds): Props =
-    Props(new Replicator(role, gossipInterval, notifySubscribersInterval, maxDeltaElements, pruningInterval, maxPruningDissemination))
+    settings: ReplicatorSettings): Props =
+    Props(new Replicator(settings))
 
   /**
    * Java API: Factory method for the [[akka.actor.Props]] of the [[Replicator]] actor
@@ -55,7 +75,7 @@ object Replicator {
    *
    * Use `Option.apply` to create the `Option`.
    */
-  def defaultProps(role: Option[String]): Props = props(role)
+  def defaultProps(role: Option[String]): Props = props(ReplicatorSettings(role))
 
   sealed trait ReadConsistency
   object ReadOne extends ReadFrom(1)
@@ -638,17 +658,12 @@ object Replicator {
  * all data are always cleared from parts associated with tombstoned nodes. </li>
  * </ol>
  */
-class Replicator(
-  role: Option[String],
-  gossipInterval: FiniteDuration,
-  notifySubscribersInterval: FiniteDuration,
-  maxDeltaElements: Int,
-  pruningInterval: FiniteDuration,
-  maxPruningDissemination: FiniteDuration) extends Actor with ActorLogging {
+class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
 
   import Replicator._
   import Replicator.Internal._
   import PruningState._
+  import settings._
 
   val cluster = Cluster(context.system)
   val selfAddress = cluster.selfAddress
