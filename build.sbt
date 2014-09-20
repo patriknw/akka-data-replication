@@ -2,7 +2,7 @@ import com.typesafe.sbt.SbtMultiJvm
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 import generate.protobuf._
 
-val akkaVersion = "2.3.5"
+val akkaVersion = "2.3.6"
 
 
 val project = Project(
