@@ -5,6 +5,7 @@ package akka.contrib.datareplication
 
 import scala.annotation.tailrec
 import scala.collection.immutable
+import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.forkjoin.ThreadLocalRandom
@@ -687,7 +688,7 @@ class Replicator(
   var dataEntries = Map.empty[String, (DataEnvelope, Digest)]
   var changed = Map.empty[String, Digest]
 
-  var subscribers = Map.empty[String, Set[ActorRef]]
+  val subscribers = new mutable.HashMap[String, mutable.Set[ActorRef]] with mutable.MultiMap[String, ActorRef]
 
   var updateInProgressBuffer = Map.empty[String, Queue[BufferedCommand]]
 
@@ -1032,7 +1033,7 @@ class Replicator(
   }
 
   def receiveSubscribe(key: String, subscriber: ActorRef): Unit = {
-    subscribers = subscribers.updated(key, subscribers.getOrElse(key, Set.empty) + subscriber)
+    subscribers.addBinding(key, subscriber)
     context.watch(subscriber)
     getData(key) foreach {
       case DataEnvelope(DeletedData, _) ⇒ subscriber ! DataDeleted(key)
@@ -1041,37 +1042,17 @@ class Replicator(
   }
 
   def receiveUnsubscribe(key: String, subscriber: ActorRef): Unit = {
-    subscribers.get(key) match {
-      case Some(existing) ⇒
-        val s = existing - subscriber
-        if (s.isEmpty)
-          subscribers -= key
-        else
-          subscribers = subscribers.updated(key, s)
-      case None ⇒
-    }
+    subscribers.removeBinding(key, subscriber)
     if (!hasSubscriber(subscriber))
       context.unwatch(subscriber)
   }
 
-  def hasSubscriber(subscriber: ActorRef): Boolean = {
-    @tailrec def find(keys: List[String]): Boolean =
-      if (keys.isEmpty) false
-      else if (subscribers(keys.head)(subscriber)) true
-      else find(keys.tail)
-
-    find(subscribers.keys.toList)
-  }
+  def hasSubscriber(subscriber: ActorRef): Boolean =
+    subscribers.exists { case (k, s) => s.contains(subscriber) }
 
   def receiveTerminated(ref: ActorRef): Unit = {
-    for ((k, s) ← subscribers) {
-      if (s(ref)) {
-        if (s.isEmpty)
-          subscribers -= k
-        else
-          subscribers = subscribers.updated(k, s)
-      }
-    }
+    val keys = subscribers collect { case (k, s) if s.contains(ref) => k }
+    keys foreach { key => subscribers.removeBinding(key, ref) }
   }
 
   def receiveMemberUp(m: Member): Unit =
