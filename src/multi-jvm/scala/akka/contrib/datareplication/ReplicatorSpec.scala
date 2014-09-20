@@ -38,8 +38,8 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
   override def initialParticipants = roles.size
 
   implicit val cluster = Cluster(system)
-  val replicator = system.actorOf(Replicator.props(role = None, gossipInterval = 1.second,
-    maxDeltaElements = 10), "replicator")
+  val replicator = system.actorOf(Replicator.props(
+    ReplicatorSettings(role = None, gossipInterval = 1.second, maxDeltaElements = 10)), "replicator")
   val timeout = 2.seconds.dilated
 
   def join(from: RoleName, to: RoleName): Unit = {
