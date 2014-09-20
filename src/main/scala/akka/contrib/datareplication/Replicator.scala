@@ -436,7 +436,7 @@ object Replicator {
 
       def addSeen(node: Address): DataEnvelope = {
         var changed = false
-        val newRemovedNodePruning = pruning.map {
+        val newRemovedNodePruning = pruning map {
           case (removed, pruningNode) ⇒
             val newPruningState = pruningNode.addSeen(node)
             changed = (newPruningState ne pruningNode) || changed
@@ -917,10 +917,12 @@ class Replicator(
     sender() ! ReadRepairAck
   }
 
-  def receiveGetKeys(): Unit =
-    sender() ! GetKeysResult(dataEntries.collect {
+  def receiveGetKeys(): Unit = {
+    val keys: Set[String] = (dataEntries collect {
       case (key, (DataEnvelope(data, _), _)) if data != DeletedData ⇒ key
-    }(collection.breakOut))
+    })(collection.breakOut)
+    sender() ! GetKeysResult(keys)
+  }
 
   def receiveDelete(key: String, consistency: WriteConsistency,
                     timeout: FiniteDuration, replyTo: ActorRef): Unit = {
@@ -965,7 +967,7 @@ class Replicator(
     ByteString.fromArray(MessageDigest.getInstance("SHA-1").digest(bytes))
   }
 
-  def getData(key: String): Option[DataEnvelope] = dataEntries.get(key).map { case (envelope, _) ⇒ envelope }
+  def getData(key: String): Option[DataEnvelope] = dataEntries.get(key) map { case (envelope, _) ⇒ envelope }
 
   def receiveNotifySubscribersTick(): Unit = {
     if (subscribers.nonEmpty) {
@@ -986,7 +988,7 @@ class Replicator(
   def receiveGossipTick(): Unit = selectRandomNode(nodes.toVector) foreach gossipTo
 
   def gossipTo(address: Address): Unit =
-    replica(address) ! Status(dataEntries.map { case (key, (_, _)) ⇒ (key, getDigest(key)) })
+    replica(address) ! (Status(dataEntries map { case (key, (_, _)) ⇒ (key, getDigest(key)) }))
 
   def selectRandomNode(addresses: immutable.IndexedSeq[Address]): Option[Address] =
     if (addresses.isEmpty) None else Some(addresses(ThreadLocalRandom.current nextInt addresses.size))
@@ -1003,7 +1005,7 @@ class Replicator(
       val d = getDigest(key)
       d != NotFoundDigest && d != otherDigest
     }
-    val otherDifferentKeys = otherDigests.collect {
+    val otherDifferentKeys = otherDigests collect {
       case (key, otherDigest) if isOtherDifferent(key, otherDigest) ⇒ key
     }
     val otherMissingKeys = dataEntries.keySet -- otherDigests.keySet
@@ -1020,7 +1022,7 @@ class Replicator(
     if (log.isDebugEnabled)
       log.debug("Received gossip from [{}], containing [{}]", sender().path.address, updatedData.keys.mkString(", "))
     var replyData = Map.empty[String, DataEnvelope]
-    updatedData.foreach {
+    updatedData foreach {
       case (key, envelope) ⇒
         write(key, envelope)
         if (sendBack) getData(key) match {
@@ -1048,7 +1050,7 @@ class Replicator(
   }
 
   def hasSubscriber(subscriber: ActorRef): Boolean =
-    subscribers.exists { case (k, s) => s.contains(subscriber) }
+    subscribers exists { case (k, s) => s.contains(subscriber) }
 
   def receiveTerminated(ref: ActorRef): Unit = {
     val keys = subscribers collect { case (k, s) if s.contains(ref) => k }
@@ -1095,9 +1097,9 @@ class Replicator(
 
   def initRemovedNodePruning(): Unit = {
     // initiate pruning for removed nodes
-    val removedSet: Set[UniqueAddress] = removedNodes.collect {
+    val removedSet: Set[UniqueAddress] = (removedNodes collect {
       case (r, t) if ((allReachableClockTime - t) > maxPruningDisseminationNanos) ⇒ r
-    }(collection.breakOut)
+    })(collection.breakOut)
 
     for ((key, (envelope, _)) ← dataEntries; removed ← removedSet) {
 
@@ -1121,9 +1123,9 @@ class Replicator(
 
   def performRemovedNodePruning(): Unit = {
     // perform pruning when all seen Init
-    dataEntries.foreach {
+    dataEntries foreach {
       case (key, (envelope @ DataEnvelope(data: RemovedNodePruning, pruning), _)) ⇒
-        pruning.foreach {
+        pruning foreach {
           case (removed, PruningState(owner, PruningInitialized(seen))) if owner == selfUniqueAddress && seen == nodes ⇒
             val newEnvelope = envelope.prune(removed)
             pruningPerformed = pruningPerformed.updated(removed, allReachableClockTime)
@@ -1138,7 +1140,7 @@ class Replicator(
   def tombstoneRemovedNodePruning(): Unit = {
 
     def allPruningPerformed(removed: UniqueAddress): Boolean = {
-      dataEntries.forall {
+      dataEntries forall {
         case (key, (envelope @ DataEnvelope(data: RemovedNodePruning, pruning), _)) ⇒
           pruning.get(removed) match {
             case Some(PruningState(_, PruningInitialized(_))) ⇒ false
@@ -1148,14 +1150,14 @@ class Replicator(
       }
     }
 
-    pruningPerformed.foreach {
+    pruningPerformed foreach {
       case (removed, timestamp) if ((allReachableClockTime - timestamp) > maxPruningDisseminationNanos) &&
         allPruningPerformed(removed) ⇒
         log.debug("All pruning performed for [{}], tombstoned", removed)
         pruningPerformed -= removed
         removedNodes -= removed
         tombstoneNodes += removed
-        dataEntries.foreach {
+        dataEntries foreach {
           case (key, (envelope @ DataEnvelope(data: RemovedNodePruning, _), _)) ⇒
             setData(key, pruningCleanupTombstoned(removed, envelope))
           case _ ⇒ // deleted, or pruning not needed

@@ -222,5 +222,5 @@ final case class VectorClock(
 
   override def pruningCleanup(removedNode: UniqueAddress): VectorClock = copy(versions = versions - removedNode)
 
-  override def toString = versions.map { case ((n, t)) ⇒ n + " -> " + t }.mkString("VectorClock(", ", ", ")")
+  override def toString = (versions map { case ((n, t)) ⇒ n + " -> " + t }).mkString("VectorClock(", ", ", ")")
 }

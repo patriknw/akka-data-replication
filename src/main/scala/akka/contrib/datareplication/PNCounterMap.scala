@@ -29,7 +29,7 @@ case class PNCounterMap(
 
   type T = PNCounterMap
 
-  def entries: Map[String, Long] = underlying.entries.map { case (k, c: PNCounter) ⇒ k -> c.value }
+  def entries: Map[String, Long] = underlying.entries map { case (k, c: PNCounter) ⇒ k -> c.value }
 
   def get(key: String): Option[Long] = underlying.get(key) match {
     case Some(c: PNCounter) ⇒ Some(c.value)

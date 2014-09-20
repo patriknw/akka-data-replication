@@ -58,7 +58,7 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
   //  val totalCount = 2000
   val expectedData = (0 until totalCount).toSet
   val data: Map[RoleName, Seq[Int]] = {
-    val nodeIndex = nodes.zipWithIndex.map { case (n, i) => i -> n }.toMap
+    val nodeIndex = (nodes.zipWithIndex map { case (n, i) => i -> n }).toMap
     (0 until totalCount).groupBy(i => nodeIndex(i % nodeCount))
   }
   lazy val myData: Seq[Int] = data(myself)
@@ -88,7 +88,7 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
 
     "setup cluster" in {
       runOn(nodes: _*) {
-        nodes.foreach { join(_, n1) }
+        nodes foreach { join(_, n1) }
 
         within(10.seconds) {
           awaitAssert {
@@ -99,7 +99,7 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
       }
 
       runOn(controller) {
-        nodes.foreach { n => enterBarrier(n.name + "-joined") }
+        nodes foreach { n => enterBarrier(n.name + "-joined") }
       }
 
       enterBarrier("after-setup")
@@ -115,8 +115,8 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
         replicator.tell(Update(key, ORSet(), WriteOne, timeout, Some(i))(_ + i), writeProbe.ref)
         writeProbe.receiveOne(3.seconds)
       }
-      val successWriteAcks = writeAcks.collect { case success: UpdateSuccess => success }
-      val failureWriteAcks = writeAcks.collect { case fail: UpdateFailure => fail }
+      val successWriteAcks = writeAcks collect { case success: UpdateSuccess => success }
+      val failureWriteAcks = writeAcks collect { case fail: UpdateFailure => fail }
       successWriteAcks.map(_.request.get).toSet should be(myData.toSet)
       successWriteAcks.size should be(myData.size)
       failureWriteAcks should be(Nil)
@@ -146,8 +146,8 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
         replicator.tell(Update(key, ORSet(), WriteQuorum, timeout, Some(i))(_ + i), writeProbe.ref)
         writeProbe.receiveOne(timeout + 1.second)
       }
-      val successWriteAcks = writeAcks.collect { case success: UpdateSuccess => success }
-      val failureWriteAcks = writeAcks.collect { case fail: UpdateFailure => fail }
+      val successWriteAcks = writeAcks collect { case success: UpdateSuccess => success }
+      val failureWriteAcks = writeAcks collect { case fail: UpdateFailure => fail }
       successWriteAcks.map(_.request.get).toSet should be(myData.toSet)
       successWriteAcks.size should be(myData.size)
       failureWriteAcks should be(Nil)
@@ -190,8 +190,8 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
         replicator.tell(Update(key, ORSet(), WriteOne, timeout, Some(i))(_ + i), writeProbe.ref)
         writeProbe.receiveOne(3.seconds)
       }
-      val successWriteAcks = writeAcks.collect { case success: UpdateSuccess => success }
-      val failureWriteAcks = writeAcks.collect { case fail: UpdateFailure => fail }
+      val successWriteAcks = writeAcks collect { case success: UpdateSuccess => success }
+      val failureWriteAcks = writeAcks collect { case fail: UpdateFailure => fail }
       successWriteAcks.map(_.request.get).toSet should be(myData.toSet)
       successWriteAcks.size should be(myData.size)
       failureWriteAcks should be(Nil)
@@ -233,8 +233,8 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
         replicator.tell(Update(key, ORSet(), WriteQuorum, timeout, Some(i))(_ + i), writeProbe.ref)
         writeProbe.receiveOne(timeout + 1.second)
       }
-      val successWriteAcks = writeAcks.collect { case success: UpdateSuccess => success }
-      val failureWriteAcks = writeAcks.collect { case fail: UpdateFailure => fail }
+      val successWriteAcks = writeAcks collect { case success: UpdateSuccess => success }
+      val failureWriteAcks = writeAcks collect { case fail: UpdateFailure => fail }
       runOn(n1, n4, n5) {
         successWriteAcks.map(_.request.get).toSet should be(myData.toSet)
         successWriteAcks.size should be(myData.size)

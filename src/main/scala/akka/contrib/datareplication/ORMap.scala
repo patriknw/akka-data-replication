@@ -111,10 +111,10 @@ case class ORMap(
   }
 
   override def needPruningFrom(removedNode: UniqueAddress): Boolean = {
-    keys.needPruningFrom(removedNode) || values.exists {
+    keys.needPruningFrom(removedNode) || (values exists {
       case (_, data: RemovedNodePruning) ⇒ data.needPruningFrom(removedNode)
       case _                             ⇒ false
-    }
+    })
   }
 
   override def prune(removedNode: UniqueAddress, collapseInto: UniqueAddress): ORMap = {

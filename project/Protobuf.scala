@@ -50,7 +50,7 @@ object Protobuf {
         targetDir.mkdirs()
 
         log.info("Generating %d protobuf files from %s to %s".format(protoFiles.size, srcDir, targetDir))
-        protoFiles.foreach { proto => log.info("Compiling %s" format proto) }
+        protoFiles foreach { proto => log.info("Compiling %s" format proto) }
 
         val exitCode = callProtoc(protoc, Seq("-I" + srcDir.absolutePath, "--java_out=%s" format targetDir.absolutePath) ++
           protoFiles.map(_.absolutePath), log, { (p, l) => p ! l })
