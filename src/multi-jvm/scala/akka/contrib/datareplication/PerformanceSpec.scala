@@ -121,7 +121,7 @@ class PerformanceSpec extends MultiNodeSpec(PerformanceSpec) with STMultiNodeSpe
   "Performance" must {
 
     "setup cluster" in {
-      roles.foreach { join(_, n1) }
+      roles foreach { join(_, n1) }
 
       within(10.seconds) {
         awaitAssert {
