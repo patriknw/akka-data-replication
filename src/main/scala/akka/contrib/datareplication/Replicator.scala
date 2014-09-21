@@ -334,10 +334,6 @@ object Replicator {
     def request: Option[Any]
   }
   case class ReplicationUpdateFailure(key: String, request: Option[Any]) extends UpdateFailure
-  case class ConflictingType(key: String, errorMessage: String, request: Option[Any])
-    extends RuntimeException with NoStackTrace with UpdateFailure {
-    override def toString: String = s"ConflictingType [$key]: $errorMessage"
-  }
   case class InvalidUsage(key: String, errorMessage: String, request: Option[Any])
     extends RuntimeException with NoStackTrace with UpdateFailure {
     override def toString: String = s"InvalidUsage [$key]: $errorMessage"
@@ -726,15 +722,14 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
 
   val normalReceive: Receive = {
     case Get(key, consistency, timeout, req)           ⇒ receiveGet(key, consistency, timeout, req, sender())
-    case Read(key)                                     ⇒ receiveRead(key)
     case Update(key, _, _, _, req) if !isLocalSender() ⇒ receiveInvalidUpdate(key, req)
     case u @ Update(key, readC, writeC, timeout, req)  ⇒ receiveUpdate(key, u.modify, readC, writeC, timeout, req, sender())
+    case Read(key)                                     ⇒ receiveRead(key)
     case Write(key, envelope)                          ⇒ receiveWrite(key, envelope)
     case ReadRepair(key, envelope)                     ⇒ receiveReadRepair(key, envelope)
-    case GetKeys                                       ⇒ receiveGetKeys()
-    case Delete(key, consistency, timeout)             ⇒ receiveDelete(key, consistency, timeout, sender())
-    case GossipTick                                    ⇒ receiveGossipTick()
     case NotifySubscribersTick                         ⇒ receiveNotifySubscribersTick()
+    case GossipTick                                    ⇒ receiveGossipTick()
+    case ClockTick                                     ⇒ receiveClockTick()
     case Status(otherDigests)                          ⇒ receiveStatus(otherDigests)
     case Gossip(updatedData, sendBack)                 ⇒ receiveGossip(updatedData, sendBack)
     case Subscribe(key, subscriber)                    ⇒ receiveSubscribe(key, subscriber)
@@ -747,7 +742,8 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
     case ReachableMember(m)                            ⇒ receiveReachable(m)
     case LeaderChanged(leader)                         ⇒ receiveLeaderChanged(leader, None)
     case RoleLeaderChanged(role, leader)               ⇒ receiveLeaderChanged(leader, Some(role))
-    case ClockTick                                     ⇒ receiveClockTick()
+    case GetKeys                                       ⇒ receiveGetKeys()
+    case Delete(key, consistency, timeout)             ⇒ receiveDelete(key, consistency, timeout, sender())
     case RemovedNodePruningTick                        ⇒ receiveRemovedNodePruningTick()
     case GetNodeCount                                  ⇒ receiveGetNodeCount()
   }
@@ -794,15 +790,12 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
       } match {
         case Success(newData) =>
           log.debug("Received Update for key [{}], old data [{}], new data [{}]", key, localValue, newData)
-          update(key, newData, req) match {
-            case Success(merged) ⇒
-              if (writeConsistency == WriteOne)
-                replyTo ! UpdateSuccess(key, req)
-              else
-                context.actorOf(WriteAggregator.props(key, merged, writeConsistency, timeout, req, nodes, replyTo))
-            case Failure(e) ⇒
-              replyTo ! e
-          }
+          val envelope = DataEnvelope(pruningCleanupTombstoned(newData))
+          setData(key, envelope)
+          if (writeConsistency == WriteOne)
+            replyTo ! UpdateSuccess(key, req)
+          else
+            context.actorOf(WriteAggregator.props(key, envelope, writeConsistency, timeout, req, nodes, replyTo))
         case Failure(e: DataDeleted) =>
           log.debug("Received Update for deleted key [{}]", key)
           replyTo ! e
@@ -824,27 +817,6 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
         context.become(updateInProgressReceive)
       if (!updateInProgressBuffer.contains(key))
         updateInProgressBuffer = updateInProgressBuffer.updated(key, Queue.empty)
-    }
-  }
-
-  def update(key: String, data: ReplicatedData, req: Option[Any]): Try[DataEnvelope] = {
-    getData(key) match {
-      case Some(DataEnvelope(DeletedData, _)) ⇒
-        Failure(DataDeleted(key))
-      case Some(envelope @ DataEnvelope(existing, pruning)) ⇒
-        if (existing.getClass == data.getClass || data == DeletedData) {
-          val merged = envelope.merge(pruningCleanupTombstoned(data))
-          setData(key, merged)
-          Success(merged)
-        } else {
-          val errMsg = s"Wrong type for updating [$key], existing type [${existing.getClass.getName}], got [${data.getClass.getName}]"
-          log.warning(errMsg)
-          Failure(ConflictingType(key, errMsg, req))
-        }
-      case None ⇒
-        val envelope = DataEnvelope(pruningCleanupTombstoned(data))
-        setData(key, envelope)
-        Success(envelope)
     }
   }
 
@@ -942,14 +914,16 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
   def receiveDelete(key: String, consistency: WriteConsistency,
                     timeout: FiniteDuration, replyTo: ActorRef): Unit = {
     // don't use sender() in this method, since it is used from drainUpdateInProgressBuffer
-    update(key, DeletedData, None) match {
-      case Success(merged) ⇒
+    getData(key) match {
+      case Some(DataEnvelope(DeletedData, _)) ⇒
+        // already deleted
+        replyTo ! DataDeleted(key)
+      case _ =>
+        setData(key, DeletedEnvelope)
         if (consistency == WriteOne)
           replyTo ! DeleteSuccess(key)
         else
-          context.actorOf(WriteAggregator.props(key, merged, consistency, timeout, None, nodes, replyTo))
-      case Failure(e) ⇒
-        replyTo ! e
+          context.actorOf(WriteAggregator.props(key, DeletedEnvelope, consistency, timeout, None, nodes, replyTo))
     }
   }
 
@@ -1193,7 +1167,8 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
   }
 
   def pruningCleanupTombstoned(data: ReplicatedData): ReplicatedData =
-    tombstoneNodes.foldLeft(data)((c, removed) ⇒ pruningCleanupTombstoned(removed, c))
+    if (tombstoneNodes.isEmpty) data
+    else tombstoneNodes.foldLeft(data)((c, removed) ⇒ pruningCleanupTombstoned(removed, c))
 
   def pruningCleanupTombstoned(removed: UniqueAddress, data: ReplicatedData): ReplicatedData =
     data match {

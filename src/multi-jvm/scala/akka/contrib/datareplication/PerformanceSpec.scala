@@ -133,18 +133,18 @@ class PerformanceSpec extends MultiNodeSpec(PerformanceSpec) with STMultiNodeSpe
       enterBarrier("after-setup")
     }
 
-    "be great for Update WriteOne" in {
+    "be great for ORSet Update WriteOne" in {
       val keys = (1 to repeatCount).map("A" + _)
-      val n = 300 * factor
+      val n = 500 * factor
       val expectedData = (0 until n).toSet
-      repeat("Update WriteOne", keys, n)({ (key, i, replyTo) =>
+      repeat("ORSet Update WriteOne", keys, n)({ (key, i, replyTo) =>
         replicator.tell(Update(key, ORSet())(_ + i), replyTo)
       }, key => awaitReplicated(key, expectedData))
 
       enterBarrier("after-1")
     }
 
-    "be blazingly fast for Get ReadOne" in {
+    "be blazingly fast for ORSet Get ReadOne" in {
       val keys = (1 to repeatCount).map("A" + _)
       repeat("Get ReadOne", keys, 1000000 * factor) { (key, i, replyTo) =>
         replicator.tell(Get(key), replyTo)
@@ -152,34 +152,75 @@ class PerformanceSpec extends MultiNodeSpec(PerformanceSpec) with STMultiNodeSpe
       enterBarrier("after-2")
     }
 
-    "be good for Update WriteOne and gossip replication" in {
+    "be good for ORSet Update WriteOne and gossip replication" in {
       val keys = (1 to repeatCount).map("B" + _)
-      val n = 300 * factor
+      val n = 500 * factor
       val expected = Some((0 until n).toSet)
-      repeat("Update WriteOne + gossip", keys, n, expected) { (key, i, replyTo) =>
+      repeat("ORSet Update WriteOne + gossip", keys, n, expected) { (key, i, replyTo) =>
         replicator.tell(Update(key, ORSet())(_ + i), replyTo)
       }
       enterBarrier("after-3")
     }
 
-    "be good for Update WriteOne and gossip of existing keys" in {
+    "be good for ORSet Update WriteOne and gossip of existing keys" in {
       val keys = (1 to repeatCount).map("B" + _)
-      val n = 300 * factor
+      val n = 500 * factor
       val expected = Some((0 until n).toSet ++ (0 until n).map(-_).toSet)
-      repeat("Update WriteOne existing + gossip", keys, n, expected) { (key, i, replyTo) =>
+      repeat("ORSet Update WriteOne existing + gossip", keys, n, expected) { (key, i, replyTo) =>
         replicator.tell(Update(key, ORSet())(_ + (-i)), replyTo)
       }
       enterBarrier("after-4")
     }
 
-    "be good for Update WriteTwo and gossip replication" in {
+    "be good for ORSet Update WriteTwo and gossip replication" in {
       val keys = (1 to repeatCount).map("C" + _)
-      val n = 300 * factor
+      val n = 500 * factor
       val expected = Some((0 until n).toSet)
-      repeat("Update WriteTwo + gossip", keys, n, expected) { (key, i, replyTo) =>
+      repeat("ORSet Update WriteTwo + gossip", keys, n, expected) { (key, i, replyTo) =>
         replicator.tell(Update(key, ORSet(), WriteTwo, timeout)(_ + i), replyTo)
       }
       enterBarrier("after-5")
+    }
+
+    "be awesome for GCounter Update WriteOne" in {
+      val startTime = System.nanoTime()
+      val n = 100000 * factor
+      val key = "D"
+      runOn(n1, n2, n3) {
+        val latch = TestLatch(n)
+        val replyTo = system.actorOf(countDownProps(latch))
+        for (_ <- 0 until n)
+          replicator.tell(Update(key, GCounter())(_ + 1), replyTo)
+        Await.ready(latch, 5.seconds * factor)
+        enterBarrier("update-done-6")
+        runOn(n1) {
+          val endTime = System.nanoTime()
+          val durationMs = (endTime - startTime).nanos.toMillis
+          val tps = (3 * n * 1000.0 / durationMs).toInt
+          println(s"## ${3 * n} GCounter Update took $durationMs ms, $tps TPS")
+        }
+      }
+      runOn(n4, n5) {
+        enterBarrier("update-done-6")
+      }
+
+      within(20.seconds) {
+        awaitAssert {
+          val readProbe = TestProbe()
+          replicator.tell(Get(key), readProbe.ref)
+          val result = readProbe.expectMsgPF() { case GetSuccess(key, c: GCounter, _) ⇒ c }
+          result.value should be(3 * n)
+        }
+      }
+      enterBarrier("replication-done-6")
+      runOn(n1) {
+        val endTime = System.nanoTime()
+        val durationMs = (endTime - startTime).nanos.toMillis
+        val tps = (n * 1000.0 / durationMs).toInt
+        println(s"## $n GCounter Update + gossip took $durationMs ms, $tps TPS")
+      }
+
+      enterBarrier("after-6")
     }
 
   }
