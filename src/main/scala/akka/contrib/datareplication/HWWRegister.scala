@@ -12,11 +12,11 @@ object HWWRegister {
     hash ^= (x & 0xFF)
     hash *= 16777619
     hash ^= (x >>> 8) & 0xFF
-    hash *=  16777619
+    hash *= 16777619
     hash ^= (x >>> 16) & 0xFF
-    hash *=  16777619
-    hash ^= (x >>> 24) & 0xFF
-    hash *= hash * 16777619
+    hash *= 16777619
+    hash ^= x >>> 24
+    hash *= 16777619
     hash
   }
 
@@ -24,7 +24,7 @@ object HWWRegister {
   // structure is only used to have an invertible function (permutation) Long => Long keyed by the epoch.
   private def permute(x: Int, epoch: Int): Int = {
     val right1 = x & 0xFFFF
-    val left1 = (x >>> 32) & 0xFFFF
+    val left1 = x >>> 16
 
     // Feistel round 1
     val right2 = left1 ^ fnv32(right1 + epoch)
@@ -48,7 +48,7 @@ case class HWWRegister(private[akka] val epoch: Int, value: Int) extends Replica
 
   private def earlierThan(that: HWWRegister): Boolean = {
     if (that.epoch > this.epoch) true
-    else if (this.epoch < that.epoch) false
+    else if (that.epoch < this.epoch) false
     else largerThan(that.value, this.value, epoch)
   }
 

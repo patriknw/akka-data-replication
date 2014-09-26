@@ -67,10 +67,11 @@ class HWWMapSpec extends WordSpec with Matchers {
       merged1.get("c") should be(23)
       merged1.get("d") should (equal(14) or equal(24))
 
-      m1.get("a") should be(m2.get("a"))
-      m1.get("b") should be(m2.get("b"))
-      m1.get("c") should be(m2.get("c"))
-      m1.get("d") should be(m2.get("d"))
+      val merged2 = m2 merge m1
+      merged1.get("a") should be(merged2.get("a"))
+      merged1.get("b") should be(merged2.get("b"))
+      merged1.get("c") should be(merged2.get("c"))
+      merged1.get("d") should be(merged2.get("d"))
     }
 
   }
