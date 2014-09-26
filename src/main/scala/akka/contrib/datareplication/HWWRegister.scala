@@ -6,8 +6,8 @@ object HWWRegister {
   def apply(): HWWRegister = initial
 
 
-  // Used only as a simple and fast one-way function with good diffusion. Not cryptographically secure.
-  private def fnv32(x: Int): Int = {
+  // FNV-1a hash used only as a simple and fast one-way function with good diffusion. Not cryptographically secure.
+  private[akka] def fnv32(x: Int): Int = {
     var hash = 0x811C9DC5 // 2166136261
     hash ^= (x & 0xFF)
     hash *= 16777619
@@ -22,16 +22,16 @@ object HWWRegister {
 
   // Two rounds Feistel block to create a "random" permutation. This is not cryptographically safe, the Feistel
   // structure is only used to have an invertible function (permutation) Long => Long keyed by the epoch.
-  private def permute(x: Int, epoch: Int): Int = {
+  private[akka] def permute(x: Int, epoch: Int): Int = {
     val right1 = x & 0xFFFF
     val left1 = x >>> 16
 
     // Feistel round 1
-    val right2 = left1 ^ fnv32(right1 + epoch)
+    val right2 = left1 ^ (fnv32(right1 + epoch) & 0xFFFF)
     val left2 = right1
 
     // Feistel round 2
-    val right3 = left2 ^ fnv32(right2 + epoch)
+    val right3 = left2 ^ (fnv32(right2 + epoch) & 0xFFFF)
     val left3 = right2
 
     (left3 << 16) | right3
