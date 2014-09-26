@@ -9,32 +9,36 @@ object HWWRegister {
   // FNV-1a hash used only as a simple and fast one-way function with good diffusion. Not cryptographically secure.
   private[akka] def fnv32(x: Int): Int = {
     var hash = 0x811C9DC5 // 2166136261
-    hash ^= (x & 0xFF)
-    hash *= 16777619
-    hash ^= (x >>> 8) & 0xFF
-    hash *= 16777619
-    hash ^= (x >>> 16) & 0xFF
-    hash *= 16777619
-    hash ^= x >>> 24
-    hash *= 16777619
+    @inline def round(x: Int): Unit = {
+      hash ^= x
+      hash *= 16777619
+    }
+
+    round(x & 0xFF)
+    round((x >>> 8) & 0xFF)
+    round((x >>> 16) & 0xFF)
+    round(x >>> 24)
     hash
   }
 
   // Two rounds Feistel block to create a "random" permutation. This is not cryptographically safe, the Feistel
   // structure is only used to have an invertible function (permutation) Long => Long keyed by the epoch.
   private[akka] def permute(x: Int, epoch: Int): Int = {
-    val right1 = x & 0xFFFF
-    val left1 = x >>> 16
+    var right = x & 0xFFFF
+    var left = x >>> 16
 
-    // Feistel round 1
-    val right2 = left1 ^ (fnv32(right1 + epoch) & 0xFFFF)
-    val left2 = right1
+    @inline def feistelRound(): Unit = {
+      val oldright = right
+      right = left ^ (fnv32(oldright + epoch) & 0xFFFF)
+      left = oldright
+    }
 
-    // Feistel round 2
-    val right3 = left2 ^ (fnv32(right2 + epoch) & 0xFFFF)
-    val left3 = right2
+    feistelRound()
+    feistelRound()
+    feistelRound()
+    feistelRound()
 
-    (left3 << 16) | right3
+    (left << 16) | right
   }
 
   // A "randomly" changing comparison function that is different in every epoch, but consistent in a certain epoch

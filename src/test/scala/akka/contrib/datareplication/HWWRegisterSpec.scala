@@ -17,18 +17,21 @@ class HWWRegisterSpec extends WordSpec with Matchers {
        val sampling = 0 to Int.MaxValue by 65537
 
        def depermute(x: Int, epoch: Int): Int = {
-         val right1 = x & 0xFFFF
-         val left1 = x >>> 16
+         var right = x & 0xFFFF
+         var left = x >>> 16
 
-         // Feistel round 1
-         val right2 = left1
-         val left2 = right1 ^ (fnv32(left1 + epoch) & 0xFFFF)
+         @inline def feistelRound(): Unit = {
+           val oldleft = left
+           left = right ^ (fnv32(oldleft + epoch) & 0xFFFF)
+           right = oldleft
+         }
 
-         // Feistel round 2
-         val right3 = left2
-         val left3 = right2 ^ (fnv32(left2 + epoch) & 0xFFFF)
+         feistelRound()
+         feistelRound()
+         feistelRound()
+         feistelRound()
 
-         (left3 << 16) | right3
+         (left << 16) | right
        }
 
        for (x <- sampling) {
