@@ -65,7 +65,7 @@ object ORSet {
       case (acc, k) ⇒
         val lhsDots = lhs.elements(k).versions
         val rhsDots = rhs.elements(k).versions
-        val commonDots = lhsDots filter {
+        val commonDots = lhsDots.filter {
           case (thisDotNode, v) ⇒ rhsDots.get(thisDotNode).exists(_ == v)
         }
         val commonDotsKeys = commonDots.keys

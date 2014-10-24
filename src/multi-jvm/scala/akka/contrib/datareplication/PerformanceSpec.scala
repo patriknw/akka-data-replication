@@ -77,7 +77,7 @@ class PerformanceSpec extends MultiNodeSpec(PerformanceSpec) with STMultiNodeSpe
   def repeat(description: String, keys: Iterable[String], n: Int, expectedAfterReplication: Option[Set[Int]] = None)(
     block: (String, Int, ActorRef) => Unit, afterEachKey: String => Unit = _ => ()): Unit = {
 
-    keys foreach { key =>
+    keys.foreach { key =>
       val startTime = System.nanoTime()
       runOn(n1) {
         val latch = TestLatch(n)
@@ -87,7 +87,7 @@ class PerformanceSpec extends MultiNodeSpec(PerformanceSpec) with STMultiNodeSpe
           block(key, i, replyTo)
         Await.ready(latch, 5.seconds * factor)
       }
-      expectedAfterReplication foreach { expected =>
+      expectedAfterReplication.foreach { expected =>
         enterBarrier("repeat-" + key + "-before-awaitReplicated")
         awaitReplicated(key, expected)
         enterBarrier("repeat-" + key + "-after-awaitReplicated")
@@ -105,7 +105,7 @@ class PerformanceSpec extends MultiNodeSpec(PerformanceSpec) with STMultiNodeSpe
   }
 
   def awaitReplicated(keys: Iterable[String], expectedData: Set[Int]): Unit =
-    keys foreach { key => awaitReplicated(key, expectedData) }
+    keys.foreach { key => awaitReplicated(key, expectedData) }
 
   def awaitReplicated(key: String, expectedData: Set[Int]): Unit = {
     within(20.seconds) {
@@ -121,7 +121,7 @@ class PerformanceSpec extends MultiNodeSpec(PerformanceSpec) with STMultiNodeSpe
   "Performance" must {
 
     "setup cluster" in {
-      roles foreach { join(_, n1) }
+      roles.foreach { join(_, n1) }
 
       within(10.seconds) {
         awaitAssert {

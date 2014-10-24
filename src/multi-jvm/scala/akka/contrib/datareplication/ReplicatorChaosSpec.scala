@@ -94,7 +94,7 @@ class ReplicatorChaosSpec extends MultiNodeSpec(ReplicatorChaosSpec) with STMult
       }
 
       runOn(first) {
-        (0 until 5) foreach { i ⇒
+        (0 until 5).foreach { i ⇒
           replicator ! Update("A", GCounter())(_ + 1)
           replicator ! Update("B", PNCounter())(_ - 1)
           replicator ! Update("C", GCounter(), WriteAll, timeout)(_ + 1)
