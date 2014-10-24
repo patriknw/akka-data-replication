@@ -194,12 +194,26 @@ object Replicator {
   case class GetFailure(key: String, request: Option[Any])
     extends ReplicatorMessage with GetResponse
 
-  case class Subscribe(key: String, subscriber: ActorRef)
-    extends ReplicatorMessage
-  case class Unsubscribe(key: String, subscriber: ActorRef)
-    extends ReplicatorMessage
-  case class Changed(key: String, data: ReplicatedData)
-    extends ReplicatorMessage
+  /**
+   * Register a subscriber that will be notified with a [[Changed]] message
+   * when the value of the given `key` is changed. Current value is also
+   * sent as a [[Changed]] message to a new subscriber.
+   *
+   * The subscriber will automatically be unregistered if it is terminated.
+   *
+   * If the key is deleted the subscriber is notified with a [[DeletedData]]
+   * message.
+   */
+  case class Subscribe(key: String, subscriber: ActorRef) extends ReplicatorMessage
+  /**
+   * Unregister a subscriber.
+   * @see [[Subscribe]]
+   */
+  case class Unsubscribe(key: String, subscriber: ActorRef) extends ReplicatorMessage
+  /**
+   * @see [[Subscribe]]
+   */
+  case class Changed(key: String, data: ReplicatedData) extends ReplicatorMessage
 
   object Update {
 
@@ -470,7 +484,12 @@ object Replicator {
       override def merge(that: ReplicatedData): ReplicatedData = DeletedData
     }
 
-    case class Status(digests: Map[String, Digest]) extends ReplicatorMessage
+    case class Status(digests: Map[String, Digest]) extends ReplicatorMessage {
+      override def toString: String =
+        (digests map {
+          case (key, bytes) => key + " -> " + bytes.map(byte => f"$byte%02x").mkString("")
+        }).mkString("Status(", ", ", ")")
+    }
     case class Gossip(updatedData: Map[String, DataEnvelope], sendBack: Boolean) extends ReplicatorMessage
 
     // Testing purpose
@@ -700,6 +719,7 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
   var changed = Map.empty[String, Digest]
 
   val subscribers = new mutable.HashMap[String, mutable.Set[ActorRef]] with mutable.MultiMap[String, ActorRef]
+  val newSubscribers = new mutable.HashMap[String, mutable.Set[ActorRef]] with mutable.MultiMap[String, ActorRef]
 
   var updateInProgressBuffer = Map.empty[String, Queue[BufferedCommand]]
 
@@ -806,7 +826,7 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
     } else {
       // Update with readConsistency != ReadOne means that we will first retrieve the data with
       // ReadAggregator (same as is used for Get). To support "read your own writes" all incoming
-      // commands for this key will be buffered while the read is in progress. When the read is 
+      // commands for this key will be buffered while the read is in progress. When the read is
       // completed the update will continue, operating on the retrieved data, and replicate the
       // new value with the writeConsistency. Buffered commands are also processed when the read
       // is completed.
@@ -959,18 +979,29 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
   def getData(key: String): Option[DataEnvelope] = dataEntries.get(key) map { case (envelope, _) ⇒ envelope }
 
   def receiveNotifySubscribersTick(): Unit = {
-    if (subscribers.nonEmpty) {
-      for ((key, oldDigest) <- changed; subs <- subscribers.get(key)) {
-        if (oldDigest != getDigest(key)) {
-          getData(key) match {
-            case Some(envelope) =>
-              val msg = if (envelope.data == DeletedData) DataDeleted(key) else Changed(key, envelope.data)
-              subs foreach { _ ! msg }
-            case None =>
-          }
-        }
+    def notify(key: String, subs: mutable.Set[ActorRef]): Unit = {
+      getData(key) match {
+        case Some(envelope) =>
+          val msg = if (envelope.data == DeletedData) DataDeleted(key) else Changed(key, envelope.data)
+          subs foreach { _ ! msg }
+        case None =>
       }
     }
+
+    if (subscribers.nonEmpty) {
+      for ((key, oldDigest) <- changed; subs <- subscribers.get(key)) {
+        if (oldDigest != getDigest(key))
+          notify(key, subs)
+      }
+    }
+    if (newSubscribers.nonEmpty) {
+      for ((key, subs) <- newSubscribers) {
+        notify(key, subs)
+        subs foreach { subscribers.addBinding(key, _) }
+      }
+      newSubscribers.clear()
+    }
+
     changed = Map.empty[String, Digest]
   }
 
@@ -1024,26 +1055,26 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
   }
 
   def receiveSubscribe(key: String, subscriber: ActorRef): Unit = {
-    subscribers.addBinding(key, subscriber)
+    newSubscribers.addBinding(key, subscriber)
     context.watch(subscriber)
-    getData(key) foreach {
-      case DataEnvelope(DeletedData, _) ⇒ subscriber ! DataDeleted(key)
-      case DataEnvelope(data, _)        ⇒ subscriber ! Changed(key, data)
-    }
   }
 
   def receiveUnsubscribe(key: String, subscriber: ActorRef): Unit = {
     subscribers.removeBinding(key, subscriber)
+    newSubscribers.removeBinding(key, subscriber)
     if (!hasSubscriber(subscriber))
       context.unwatch(subscriber)
   }
 
   def hasSubscriber(subscriber: ActorRef): Boolean =
-    subscribers exists { case (k, s) => s.contains(subscriber) }
+    (subscribers exists { case (k, s) => s.contains(subscriber) }) ||
+      (newSubscribers exists { case (k, s) => s.contains(subscriber) })
 
   def receiveTerminated(ref: ActorRef): Unit = {
-    val keys = subscribers collect { case (k, s) if s.contains(ref) => k }
-    keys foreach { key => subscribers.removeBinding(key, ref) }
+    val keys1 = subscribers collect { case (k, s) if s.contains(ref) => k }
+    keys1 foreach { key => subscribers.removeBinding(key, ref) }
+    val keys2 = newSubscribers collect { case (k, s) if s.contains(ref) => k }
+    keys2 foreach { key => newSubscribers.removeBinding(key, ref) }
   }
 
   def receiveMemberUp(m: Member): Unit =
