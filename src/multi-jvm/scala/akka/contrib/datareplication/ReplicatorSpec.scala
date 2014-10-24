@@ -77,6 +77,10 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
         expectMsg(GetSuccess("A", c3, None))
         changedProbe.expectMsg(Changed("A", c3))
 
+        val changedProbe2 = TestProbe()
+        replicator ! Subscribe("A", changedProbe2.ref)
+        changedProbe2.expectMsg(Changed("A", c3))
+
         val c4 = c3 + 1
         // too strong consistency level
         replicator ! Update("A", GCounter(), WriteTwo, timeout)(_ + 1)
