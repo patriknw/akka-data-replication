@@ -33,7 +33,7 @@ case class LWWMap(
 
   type T = LWWMap
 
-  def entries: Map[String, Any] = underlying.entries map { case (k, r: LWWRegister) ⇒ k -> r.value }
+  def entries: Map[String, Any] = underlying.entries.map { case (k, r: LWWRegister) ⇒ k -> r.value }
 
   def get(key: String): Option[Any] = underlying.get(key) match {
     case Some(r: LWWRegister) ⇒ Some(r.value)

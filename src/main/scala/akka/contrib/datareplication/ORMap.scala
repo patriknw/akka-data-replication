@@ -3,7 +3,6 @@
  */
 package akka.contrib.datareplication
 
-import scala.collection.breakOut
 import akka.cluster.Cluster
 import akka.cluster.UniqueAddress
 
@@ -88,7 +87,7 @@ case class ORMap(
   override def merge(that: ORMap): ORMap = {
     val mergedKeys = keys.merge(that.keys)
     var mergedValues = Map.empty[String, ReplicatedData]
-    mergedKeys.elements.keysIterator foreach {
+    mergedKeys.elements.keysIterator.foreach {
       case key: String ⇒
         (this.values.get(key), that.values.get(key)) match {
           case (Some(thisValue), Some(thatValue)) ⇒
@@ -111,10 +110,10 @@ case class ORMap(
   }
 
   override def needPruningFrom(removedNode: UniqueAddress): Boolean = {
-    keys.needPruningFrom(removedNode) || (values exists {
+    keys.needPruningFrom(removedNode) || values.exists {
       case (_, data: RemovedNodePruning) ⇒ data.needPruningFrom(removedNode)
       case _                             ⇒ false
-    })
+    }
   }
 
   override def prune(removedNode: UniqueAddress, collapseInto: UniqueAddress): ORMap = {

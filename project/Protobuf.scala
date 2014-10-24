@@ -18,8 +18,8 @@ object Protobuf {
   val generate = TaskKey[Unit]("protobuf-generate", "Compile the protobuf sources and do all processing.")
 
   lazy val settings: Seq[Setting[_]] = Seq(
-    paths <<= (sourceDirectory in Compile, sourceDirectory in Test) { (a, b) => Seq(a, b) map (_ / "protobuf") },
-    outputPaths <<= (sourceDirectory in Compile, sourceDirectory in Test) { (a, b) => Seq(a, b) map (_ / "java") },
+    paths <<= (sourceDirectory in Compile, sourceDirectory in Test) { (a, b) => Seq(a, b).map(_ / "protobuf") },
+    outputPaths <<= (sourceDirectory in Compile, sourceDirectory in Test) { (a, b) => Seq(a, b).map(_ / "java") },
     protoc := "protoc",
     protocVersion := "2.5.0",
     generate <<= generateSourceTask
@@ -50,7 +50,7 @@ object Protobuf {
         targetDir.mkdirs()
 
         log.info("Generating %d protobuf files from %s to %s".format(protoFiles.size, srcDir, targetDir))
-        protoFiles foreach { proto => log.info("Compiling %s" format proto) }
+        protoFiles.foreach { proto => log.info("Compiling %s" format proto) }
 
         val exitCode = callProtoc(protoc, Seq("-I" + srcDir.absolutePath, "--java_out=%s" format targetDir.absolutePath) ++
           protoFiles.map(_.absolutePath), log, { (p, l) => p ! l })
@@ -59,16 +59,16 @@ object Protobuf {
       }
   }
 
-  private def generateSourceTask: Project.Initialize[Task[Unit]] = (streams, paths, outputPaths, protoc, protocVersion) map {
+  private def generateSourceTask: Project.Initialize[Task[Unit]] = (streams, paths, outputPaths, protoc, protocVersion).map {
     (out, sourceDirs, targetDirs, protoc, protocVersion) =>
       if (sourceDirs.size != targetDirs.size)
         sys.error("Unbalanced number of paths and destination paths!\nPaths: %s\nDestination Paths: %s" format
           (sourceDirs, targetDirs))
 
-      if (sourceDirs exists { _.exists }) {
+      if (sourceDirs.exists  { _.exists }) {
         checkProtocVersion(protoc, protocVersion, out.log)
 
-        (sourceDirs zip targetDirs) map {
+        (sourceDirs zip targetDirs).map {
           case (sourceDir, targetDir) =>
             generate(protoc, sourceDir, targetDir, out.log)
         }

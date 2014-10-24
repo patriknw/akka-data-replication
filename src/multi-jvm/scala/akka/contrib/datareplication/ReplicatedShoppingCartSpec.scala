@@ -61,7 +61,7 @@ class ShoppingCart(userId: String) extends Actor with Stash {
       replicator ! Get(DataKey, ReadQuorum, timeout, Some(sender()))
 
     case GetSuccess(DataKey, data: LWWMap, Some(replyTo: ActorRef)) ⇒
-      val cart = Cart((data.entries.values map { case line: LineItem ⇒ line }).toSet)
+      val cart = Cart(data.entries.values.map { case line: LineItem ⇒ line }.toSet)
       replyTo ! cart
 
     case NotFound(DataKey, Some(replyTo: ActorRef)) ⇒
