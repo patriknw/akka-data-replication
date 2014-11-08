@@ -58,7 +58,7 @@ class ReplicatorChaosSpec extends MultiNodeSpec(ReplicatorChaosSpec) with STMult
   def assertValue(key: String, expected: Any): Unit =
     within(10.seconds) {
       awaitAssert {
-        replicator ! Get(key)
+        replicator ! Get(key, ReadLocal)
         val value = expectMsgPF() {
           case GetSuccess(`key`, c: GCounter, _)  ⇒ c.value
           case GetSuccess(`key`, c: PNCounter, _) ⇒ c.value
@@ -72,7 +72,7 @@ class ReplicatorChaosSpec extends MultiNodeSpec(ReplicatorChaosSpec) with STMult
   def assertDeleted(key: String): Unit =
     within(5.seconds) {
       awaitAssert {
-        replicator ! Get(key, ReadOne, timeout)
+        replicator ! Get(key, ReadLocal)
         expectMsg(DataDeleted(key))
       }
     }
@@ -95,42 +95,42 @@ class ReplicatorChaosSpec extends MultiNodeSpec(ReplicatorChaosSpec) with STMult
 
       runOn(first) {
         (0 until 5).foreach { i ⇒
-          replicator ! Update("A", GCounter())(_ + 1)
-          replicator ! Update("B", PNCounter())(_ - 1)
-          replicator ! Update("C", GCounter(), WriteAll, timeout)(_ + 1)
+          replicator ! Update("A", GCounter(), WriteLocal)(_ + 1)
+          replicator ! Update("B", PNCounter(), WriteLocal)(_ - 1)
+          replicator ! Update("C", GCounter(), WriteAll(timeout))(_ + 1)
         }
         receiveN(15).map(_.getClass).toSet should be(Set(classOf[UpdateSuccess]))
       }
 
       runOn(second) {
-        replicator ! Update("A", GCounter())(_ + 20)
-        replicator ! Update("B", PNCounter(), WriteTwo, timeout)(_ + 20)
-        replicator ! Update("C", GCounter(), WriteAll, timeout)(_ + 20)
+        replicator ! Update("A", GCounter(), WriteLocal)(_ + 20)
+        replicator ! Update("B", PNCounter(), WriteTo(2, timeout))(_ + 20)
+        replicator ! Update("C", GCounter(), WriteAll(timeout))(_ + 20)
         receiveN(3).toSet should be(Set(UpdateSuccess("A", None),
           UpdateSuccess("B", None), UpdateSuccess("C", None)))
 
-        replicator ! Update("E", GSet())(_ + "e1" + "e2")
+        replicator ! Update("E", GSet(), WriteLocal)(_ + "e1" + "e2")
         expectMsg(UpdateSuccess("E", None))
 
-        replicator ! Update("F", ORSet())(_ + "e1" + "e2")
+        replicator ! Update("F", ORSet(), WriteLocal)(_ + "e1" + "e2")
         expectMsg(UpdateSuccess("F", None))
       }
 
       runOn(fourth) {
-        replicator ! Update("D", GCounter())(_ + 40)
+        replicator ! Update("D", GCounter(), WriteLocal)(_ + 40)
         expectMsg(UpdateSuccess("D", None))
 
-        replicator ! Update("E", GSet())(_ + "e2" + "e3")
+        replicator ! Update("E", GSet(), WriteLocal)(_ + "e2" + "e3")
         expectMsg(UpdateSuccess("E", None))
 
-        replicator ! Update("F", ORSet())(_ + "e2" + "e3")
+        replicator ! Update("F", ORSet(), WriteLocal)(_ + "e2" + "e3")
         expectMsg(UpdateSuccess("F", None))
       }
 
       runOn(fifth) {
-        replicator ! Update("X", GCounter(), WriteTwo, timeout)(_ + 50)
+        replicator ! Update("X", GCounter(), WriteTo(2, timeout))(_ + 50)
         expectMsg(UpdateSuccess("X", None))
-        replicator ! Delete("X")
+        replicator ! Delete("X", WriteLocal)
         expectMsg(DeleteSuccess("X"))
       }
 
@@ -156,22 +156,22 @@ class ReplicatorChaosSpec extends MultiNodeSpec(ReplicatorChaosSpec) with STMult
       enterBarrier("split")
 
       runOn(first) {
-        replicator ! Update("A", GCounter(), WriteTwo, timeout)(_ + 1)
+        replicator ! Update("A", GCounter(), WriteTo(2, timeout))(_ + 1)
         expectMsg(UpdateSuccess("A", None))
       }
 
       runOn(third) {
-        replicator ! Update("A", GCounter(), WriteTwo, timeout)(_ + 2)
+        replicator ! Update("A", GCounter(), WriteTo(2, timeout))(_ + 2)
         expectMsg(UpdateSuccess("A", None))
 
-        replicator ! Update("E", GSet(), WriteTwo, timeout)(_ + "e4")
+        replicator ! Update("E", GSet(), WriteTo(2, timeout))(_ + "e4")
         expectMsg(UpdateSuccess("E", None))
 
-        replicator ! Update("F", ORSet(), WriteTwo, timeout)(_ - "e2")
+        replicator ! Update("F", ORSet(), WriteTo(2, timeout))(_ - "e2")
         expectMsg(UpdateSuccess("F", None))
       }
       runOn(fourth) {
-        replicator ! Update("D", GCounter(), WriteTwo, timeout)(_ + 1)
+        replicator ! Update("D", GCounter(), WriteTo(2, timeout))(_ + 1)
         expectMsg(UpdateSuccess("D", None))
       }
       enterBarrier("update-during-split")
