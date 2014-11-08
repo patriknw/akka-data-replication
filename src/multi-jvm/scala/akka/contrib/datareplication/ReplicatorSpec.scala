@@ -424,6 +424,14 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
     }
     enterBarrier("quorum-update-from-second")
 
+    runOn(first, second) {
+      replicator ! Update("E2", GCounter(), readAll, writeAll, Some(999))(_ + 1)
+      expectMsg(ReadFailure("E2", Some(999)))
+      replicator ! Get("E2", ReadLocal)
+      expectMsg(NotFound("E2", None))
+    }
+    enterBarrier("read-all-fail-update")
+
     runOn(first) {
       testConductor.passThrough(first, third, Direction.Both).await
       testConductor.passThrough(second, third, Direction.Both).await
