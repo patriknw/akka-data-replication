@@ -134,6 +134,12 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
     }
   }
 
+  "reply with ModifyFailure if exception is thrown by modify function" in {
+    val e = new RuntimeException("errr")
+    replicator ! Update("A", GCounter(), WriteLocal)(_ => throw e)
+    expectMsgType[ModifyFailure].cause should be(e)
+  }
+
   "replicate values to new node" in {
     join(second, first)
 

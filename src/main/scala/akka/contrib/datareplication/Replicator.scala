@@ -301,11 +301,15 @@ object Replicator {
   }
   case class ReplicationUpdateFailure(key: String, request: Option[Any]) extends UpdateFailure
   case class InvalidUsage(key: String, errorMessage: String, request: Option[Any])
-    extends RuntimeException with NoStackTrace with UpdateFailure {
+    extends RuntimeException(errorMessage) with NoStackTrace with UpdateFailure {
     override def toString: String = s"InvalidUsage [$key]: $errorMessage"
   }
-  case class ModifyFailure(key: String, errorMessage: String, request: Option[Any])
-    extends RuntimeException with NoStackTrace with UpdateFailure {
+  /**
+   * If the `modify` function of the [[Update]] throws an exception the reply message
+   * will be this `ModifyFailure` message. The original exception is included as `cause`.
+   */
+  case class ModifyFailure(key: String, errorMessage: String, cause: Throwable, request: Option[Any])
+    extends RuntimeException(errorMessage, cause) with NoStackTrace with UpdateFailure {
     override def toString: String = s"ModifyFailure [$key]: $errorMessage"
   }
 
@@ -759,7 +763,7 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
           replyTo ! e
         case Failure(e) =>
           log.debug("Received Update for key [{}], failed: {}", key, e.getMessage)
-          replyTo ! ModifyFailure(key, "Update failed: " + e.getMessage, req)
+          replyTo ! ModifyFailure(key, "Update failed: " + e.getMessage, e, req)
       }
     } else {
       // Update with readConsistency != ReadLocal means that we will first retrieve the data with
