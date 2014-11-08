@@ -90,7 +90,7 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
         val c4 = c3 + 1
         // too strong consistency level
         replicator ! Update("A", GCounter(), writeTwo)(_ + 1)
-        expectMsg(ReplicationUpdateFailure("A", None))
+        expectMsg(UpdateTimeout("A", None))
         replicator ! Get("A", ReadLocal)
         expectMsg(GetSuccess("A", c4, None))
         changedProbe.expectMsg(Changed("A", c4))
@@ -312,9 +312,9 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
       val c40 = expectMsgPF() { case GetSuccess("D", c: GCounter, _) ⇒ c }
       c40.value should be(40)
       replicator ! Update("D", GCounter() + 1, writeTwo)(_ + 1)
-      expectMsg(ReplicationUpdateFailure("D", None))
+      expectMsg(UpdateTimeout("D", None))
       replicator ! Update("D", GCounter(), writeTwo)(_ + 1)
-      expectMsg(ReplicationUpdateFailure("D", None))
+      expectMsg(UpdateTimeout("D", None))
     }
     runOn(first) {
       for (n ← 1 to 30) {

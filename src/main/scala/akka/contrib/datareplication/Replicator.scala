@@ -3,35 +3,35 @@
  */
 package akka.contrib.datareplication
 
+import java.security.MessageDigest
+
 import scala.annotation.tailrec
 import scala.collection.immutable
+import scala.collection.immutable.Queue
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.forkjoin.ThreadLocalRandom
+import scala.util.Failure
+import scala.util.Success
+import scala.util.Try
+import scala.util.control.NoStackTrace
+
 import akka.actor.Actor
 import akka.actor.ActorLogging
 import akka.actor.ActorRef
 import akka.actor.ActorSelection
+import akka.actor.Address
 import akka.actor.Props
 import akka.actor.ReceiveTimeout
+import akka.actor.Terminated
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent._
-import akka.cluster.Member
-import akka.cluster.MemberStatus
-import akka.cluster.UniqueAddress
-import scala.util.Try
-import scala.util.Success
-import scala.util.Failure
-import java.net.URLEncoder
-import scala.util.control.NoStackTrace
-import akka.util.ByteString
-import akka.serialization.SerializationExtension
-import java.security.MessageDigest
 import akka.cluster.ClusterEvent.InitialStateAsEvents
-import akka.actor.Address
-import akka.actor.Terminated
-import scala.collection.immutable.Queue
+import akka.cluster.Member
+import akka.cluster.UniqueAddress
+import akka.serialization.SerializationExtension
+import akka.util.ByteString
 import com.typesafe.config.Config
 
 object ReplicatorSettings {
@@ -152,6 +152,10 @@ object Replicator {
     extends ReplicatorMessage with GetResponse
   case class NotFound(key: String, request: Option[Any])
     extends ReplicatorMessage with GetResponse
+  /**
+   * The [[Get]] request could not be fulfill according to the given
+   * [[ReadConsistency consistency level]] and [[ReadConsistency#timeout timeout]].
+   */
   case class GetFailure(key: String, request: Option[Any])
     extends ReplicatorMessage with GetResponse
 
@@ -162,7 +166,7 @@ object Replicator {
    *
    * The subscriber will automatically be unregistered if it is terminated.
    *
-   * If the key is deleted the subscriber is notified with a [[DeletedData]]
+   * If the key is deleted the subscriber is notified with a [[DataDeleted]]
    * message.
    */
   case class Subscribe(key: String, subscriber: ActorRef) extends ReplicatorMessage
@@ -299,7 +303,16 @@ object Replicator {
     def key: String
     def request: Option[Any]
   }
-  case class ReplicationUpdateFailure(key: String, request: Option[Any]) extends UpdateFailure
+  /**
+   * The direct replication of the [[Update]] could not be fulfill according to
+   * the given [[WriteConsistency consistency level]] and
+   * [[WriteConsistency#timeout timeout]].
+   *
+   * The `Update` was still performed locally and possibly replicated to some nodes.
+   * It will eventually be disseminated to other replicas, unless the local replica
+   * crashes before it has been able to communicate with other replicas.
+   */
+  case class UpdateTimeout(key: String, request: Option[Any]) extends UpdateFailure
   case class InvalidUsage(key: String, errorMessage: String, request: Option[Any])
     extends RuntimeException(errorMessage) with NoStackTrace with UpdateFailure {
     override def toString: String = s"InvalidUsage [$key]: $errorMessage"
@@ -502,10 +515,10 @@ object Replicator {
  *
  * As reply of the `Update` a [[Replicator.UpdateSuccess]] is sent to the sender of the
  * `Update` if the value was successfully replicated according to the supplied consistency
- * level within the supplied timeout. Otherwise a [[Replicator.UpdateFailure]] is sent.
- * Note that `UpdateFailure` does not mean that the update completely failed or was rolled back.
- * It may still have been replicated to some nodes, and will eventually be replicated to all
- * nodes with the gossip protocol.
+ * level within the supplied timeout. Otherwise a [[Replicator.UpdateFailure]] subclass is
+ * sent back. Note that a [[Replicator.UpdateTimeout]] reply does not mean that the update completely failed
+ * or was rolled back. It may still have been replicated to some nodes, and will eventually
+ * be replicated to all nodes with the gossip protocol.
  *
  * You will always see your own writes. For example if you send two `Update` messages
  * changing the value of the same `key`, the `modify` function of the second message will
@@ -1298,7 +1311,7 @@ private[akka] class WriteAggregator(
     else if (envelope.data == DeletedData)
       replyTo.tell(ReplicationDeleteFailure(key), context.parent)
     else
-      replyTo.tell(ReplicationUpdateFailure(key, req), context.parent)
+      replyTo.tell(UpdateTimeout(key, req), context.parent)
     becomeDone()
   }
 }
