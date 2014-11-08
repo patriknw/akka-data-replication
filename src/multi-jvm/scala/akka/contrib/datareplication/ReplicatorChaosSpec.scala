@@ -139,6 +139,7 @@ class ReplicatorChaosSpec extends MultiNodeSpec(ReplicatorChaosSpec) with STMult
       assertValue("A", 25)
       assertValue("B", 15)
       assertValue("C", 25)
+      assertValue("D", 40)
       assertValue("E", Set("e1", "e2", "e3"))
       assertValue("F", Set("e1", "e2", "e3"))
       assertDeleted("X")
