@@ -92,8 +92,8 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
         val c5 = c4 + 1
         // too strong consistency level
         replicator ! Update("A", GCounter(), WriteQuorum, timeout)(_ + 1)
-        expectMsg(ReplicationUpdateFailure("A", None))
-        replicator ! Get("A", ReadOne, timeout)
+        expectMsg(UpdateSuccess("A", None))
+        replicator ! Get("A", ReadQuorum, timeout)
         expectMsg(GetSuccess("A", c5, None))
         changedProbe.expectMsg(Changed("A", c5))
 
@@ -163,14 +163,11 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
   "work in 2 node cluster" in {
 
     runOn(first, second) {
-
       // start with 20 on both nodes
-      val c20 = GCounter() + 20
       replicator ! Update("B", GCounter())(_ + 20)
       expectMsg(UpdateSuccess("B", None))
 
       // add 1 on both nodes using WriteTwo
-      val c21 = c20 + 1
       replicator ! Update("B", GCounter(), WriteTwo, timeout)(_ + 1)
       expectMsg(UpdateSuccess("B", None))
 
@@ -180,9 +177,11 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
         val c = expectMsgPF() { case GetSuccess("B", c: GCounter, _) ⇒ c }
         c.value should be(42)
       }
+    }
+    enterBarrier("update-42")
 
+    runOn(first, second) {
       // add 1 on both nodes using WriteAll
-      val c22 = c21 + 1
       replicator ! Update("B", GCounter(), WriteAll, timeout)(_ + 1)
       expectMsg(UpdateSuccess("B", None))
 
@@ -192,7 +191,20 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
         val c = expectMsgPF() { case GetSuccess("B", c: GCounter, _) ⇒ c }
         c.value should be(44)
       }
+    }
+    enterBarrier("update-44")
 
+    runOn(first, second) {
+      // add 1 on both nodes using WriteQuorum
+      replicator ! Update("B", GCounter(), WriteQuorum, timeout)(_ + 1)
+      expectMsg(UpdateSuccess("B", None))
+
+      // the total, after replication should be 46
+      awaitAssert {
+        replicator ! Get("B", ReadQuorum, timeout)
+        val c = expectMsgPF() { case GetSuccess("B", c: GCounter, _) ⇒ c }
+        c.value should be(46)
+      }
     }
 
     enterBarrier("after-3")
@@ -205,13 +217,15 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
     }
 
     runOn(first) {
-      val c30 = GCounter() + 30
       replicator ! Update("C", GCounter(), WriteTwo, timeout)(_ + 30)
       expectMsg(UpdateSuccess("C", None))
       changedProbe.expectMsgPF() { case Changed("C", c: GCounter) ⇒ c.value } should be(30)
 
       replicator ! Update("Y", GCounter(), WriteTwo, timeout)(_ + 30)
       expectMsg(UpdateSuccess("Y", None))
+
+      replicator ! Update("Z", GCounter(), WriteQuorum, timeout)(_ + 30)
+      expectMsg(UpdateSuccess("Z", None))
     }
     enterBarrier("update-c30")
 
@@ -222,13 +236,15 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
       changedProbe.expectMsgPF() { case Changed("C", c: GCounter) ⇒ c.value } should be(30)
 
       // replicate with gossip after WriteOne
-      val c31 = c30 + 1
       replicator ! Update("C", GCounter(), WriteOne, timeout)(_ + 1)
       expectMsg(UpdateSuccess("C", None))
       changedProbe.expectMsgPF() { case Changed("C", c: GCounter) ⇒ c.value } should be(31)
 
       replicator ! Delete("Y", WriteOne, timeout)
       expectMsg(DeleteSuccess("Y"))
+
+      replicator ! Get("Z", ReadQuorum, timeout)
+      expectMsgPF() { case GetSuccess("Z", c: GCounter, _) ⇒ c.value } should be(30)
     }
     enterBarrier("update-c31")
 
@@ -272,7 +288,6 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
 
   "converge after partition" in {
     runOn(first) {
-      val c40 = GCounter() + 40
       replicator ! Update("D", GCounter(), WriteTwo, timeout)(_ + 40)
       expectMsg(UpdateSuccess("D", None))
 
@@ -284,10 +299,8 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
       replicator ! Get("D", ReadOne, timeout)
       val c40 = expectMsgPF() { case GetSuccess("D", c: GCounter, _) ⇒ c }
       c40.value should be(40)
-      val c41 = c40 + 1
       replicator ! Update("D", GCounter() + 1, WriteTwo, timeout)(_ + 1)
       expectMsg(ReplicationUpdateFailure("D", None))
-      val c42 = c41 + 1
       replicator ! Update("D", GCounter(), WriteTwo, timeout)(_ + 1)
       expectMsg(ReplicationUpdateFailure("D", None))
     }
@@ -337,7 +350,6 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
     enterBarrier("3-nodes")
 
     runOn(first, second, third) {
-      val c50 = GCounter() + 50
       replicator ! Update("E", GCounter(), WriteQuorum, timeout)(_ + 50)
       expectMsg(UpdateSuccess("E", None))
     }

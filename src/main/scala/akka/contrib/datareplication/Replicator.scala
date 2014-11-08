@@ -595,7 +595,7 @@ object Replicator {
  *     including the local replica</li>
  * <li>`ReadFrom(n)` the value will be read and merged from `n` replicas,
  *     including the local replica</li>
- * <li>`ReadQuorum` the value will read and merged from a majority of replicas, i.e.
+ * <li>`ReadQuorum` the value will be read and merged from a majority of replicas, i.e.
  *     at least `N/2 + 1` replicas, where N is the number of nodes in the cluster
  *     (or cluster role group)</li>
  * <li>`ReadAll` the value will be read and merged from all nodes in the cluster
@@ -773,7 +773,7 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
     // don't use sender() in this method, since it is used from drainUpdateInProgressBuffer
     val localValue = getData(key)
     log.debug("Received Get for key [{}], local data [{}]", key, localValue)
-    if (consistency == ReadOne) {
+    if (isLocalGet(consistency)) {
       val reply = localValue match {
         case Some(DataEnvelope(DeletedData, _)) ⇒ DataDeleted(key)
         case Some(DataEnvelope(data, _))        ⇒ GetSuccess(key, data, req)
@@ -783,6 +783,10 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
     } else
       context.actorOf(ReadAggregator.props(key, consistency, timeout, req, nodes, localValue, replyTo))
   }
+
+  def isLocalGet(readConsistency: ReadConsistency): Boolean =
+    (readConsistency == ReadOne ||
+      (nodes.isEmpty && (readConsistency == ReadQuorum || readConsistency == ReadAll)))
 
   def receiveRead(key: String): Unit = {
     sender() ! ReadResult(getData(key))
@@ -812,7 +816,7 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
           log.debug("Received Update for key [{}], old data [{}], new data [{}]", key, localValue, newData)
           val envelope = DataEnvelope(pruningCleanupTombstoned(newData))
           setData(key, envelope)
-          if (writeConsistency == WriteOne)
+          if (isLocalUpdate(writeConsistency))
             replyTo ! UpdateSuccess(key, req)
           else
             context.actorOf(WriteAggregator.props(key, envelope, writeConsistency, timeout, req, nodes, replyTo))
@@ -839,6 +843,10 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
         updateInProgressBuffer = updateInProgressBuffer.updated(key, Queue.empty)
     }
   }
+
+  def isLocalUpdate(writeConsistency: WriteConsistency): Boolean =
+    (writeConsistency == WriteOne ||
+      (nodes.isEmpty && (writeConsistency == WriteQuorum || writeConsistency == WriteAll)))
 
   val updateInProgressReceive: Receive = ({
     case Update(key, _, _, _, req) if !isLocalSender() ⇒ receiveInvalidUpdate(key, req)
@@ -940,7 +948,7 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
         replyTo ! DataDeleted(key)
       case _ =>
         setData(key, DeletedEnvelope)
-        if (consistency == WriteOne)
+        if (isLocalUpdate(consistency))
           replyTo ! DeleteSuccess(key)
         else
           context.actorOf(WriteAggregator.props(key, DeletedEnvelope, consistency, timeout, None, nodes, replyTo))
@@ -1315,11 +1323,8 @@ private[akka] class WriteAggregator(
     case WriteAll   ⇒ 0
     case WriteQuorum ⇒
       val N = nodes.size + 1
-      if (N < 3) -1
-      else {
-        val w = N / 2 + 1 // write to at least (N/2+1) nodes
-        N - w
-      }
+      val w = N / 2 + 1 // write to at least (N/2+1) nodes
+      N - w
   }
 
   val writeMsg = Write(key, envelope)
@@ -1393,11 +1398,8 @@ private[akka] class ReadAggregator(
     case ReadAll     ⇒ 0
     case ReadQuorum ⇒
       val N = nodes.size + 1
-      if (N < 3) -1
-      else {
-        val r = N / 2 + 1 // read from at least (N/2+1) nodes
-        N - r
-      }
+      val r = N / 2 + 1 // read from at least (N/2+1) nodes
+      N - r
   }
 
   val readMsg = Read(key)
