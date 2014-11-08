@@ -82,8 +82,8 @@ class ShoppingCart(userId: String) extends Actor with Stash {
       }
       replicator ! update
 
-    case _: UpdateSuccess | _: ReplicationUpdateFailure ⇒
-    // ReplicationUpdateFailure, will eventually be replicated
+    case _: UpdateSuccess | _: UpdateTimeout ⇒
+    // UpdateTimeout, will eventually be replicated
   }
 
   def updateCart(data: LWWMap, item: LineItem): LWWMap =
