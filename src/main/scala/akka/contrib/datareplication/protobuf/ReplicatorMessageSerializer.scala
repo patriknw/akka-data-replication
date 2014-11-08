@@ -111,15 +111,16 @@ class ReplicatorMessageSerializer(val system: ExtendedActorSystem) extends Seria
 
   private def getToProto(get: Get): dm.Get = {
     val consistencyValue = get.consistency match {
-      case ReadFrom(n) ⇒ n
-      case ReadQuorum  ⇒ 0
-      case ReadAll     ⇒ -1
+      case ReadLocal      ⇒ 1
+      case ReadFrom(n, _) ⇒ n
+      case _: ReadQuorum  ⇒ 0
+      case _: ReadAll     ⇒ -1
     }
 
     val b = dm.Get.newBuilder().
       setKey(get.key).
       setConsistency(consistencyValue).
-      setTimeout(get.timeout.toMillis.toInt)
+      setTimeout(get.consistency.timeout.toMillis.toInt)
 
     get.request.foreach(o ⇒ b.setRequest(otherMessageToProto(o)))
     b.build()
@@ -128,12 +129,14 @@ class ReplicatorMessageSerializer(val system: ExtendedActorSystem) extends Seria
   private def getFromBinary(bytes: Array[Byte]): Get = {
     val get = dm.Get.parseFrom(bytes)
     val request = if (get.hasRequest()) Some(otherMessageFromProto(get.getRequest)) else None
+    val timeout = Duration(get.getTimeout, TimeUnit.MILLISECONDS)
     val consistency = get.getConsistency match {
-      case 0  ⇒ ReadQuorum
-      case -1 ⇒ ReadAll
-      case n  ⇒ ReadFrom(n)
+      case 0  ⇒ ReadQuorum(timeout)
+      case -1 ⇒ ReadAll(timeout)
+      case 1  ⇒ ReadLocal
+      case n  ⇒ ReadFrom(n, timeout)
     }
-    Get(get.getKey, consistency, Duration(get.getTimeout, TimeUnit.MILLISECONDS), request)
+    Get(get.getKey, consistency, request)
   }
 
   private def getSuccessToProto(getSuccess: GetSuccess): dm.GetSuccess = {

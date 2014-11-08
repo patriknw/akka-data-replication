@@ -41,6 +41,12 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
   val replicator = system.actorOf(Replicator.props(
     ReplicatorSettings(role = None, gossipInterval = 1.second, maxDeltaElements = 10)), "replicator")
   val timeout = 2.seconds.dilated
+  val writeTwo = WriteTo(2, timeout)
+  val writeQuorum = WriteQuorum(timeout)
+  val writeAll = WriteAll(timeout)
+  val readTwo = ReadFrom(2, timeout)
+  val readAll = ReadAll(timeout)
+  val readQuorum = ReadQuorum(timeout)
 
   def join(from: RoleName, to: RoleName): Unit = {
     runOn(from) {
@@ -67,13 +73,13 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
         replicator ! Subscribe("A", changedProbe.ref)
         replicator ! Subscribe("X", changedProbe.ref)
 
-        replicator ! Get("A", ReadOne, timeout)
+        replicator ! Get("A", ReadLocal)
         expectMsg(NotFound("A", None))
 
         val c3 = GCounter() + 3
-        replicator ! Update("A", GCounter())(_ + 3)
+        replicator ! Update("A", GCounter(), WriteLocal)(_ + 3)
         expectMsg(UpdateSuccess("A", None))
-        replicator ! Get("A", ReadOne, timeout)
+        replicator ! Get("A", ReadLocal)
         expectMsg(GetSuccess("A", c3, None))
         changedProbe.expectMsg(Changed("A", c3))
 
@@ -83,41 +89,41 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
 
         val c4 = c3 + 1
         // too strong consistency level
-        replicator ! Update("A", GCounter(), WriteTwo, timeout)(_ + 1)
+        replicator ! Update("A", GCounter(), writeTwo)(_ + 1)
         expectMsg(ReplicationUpdateFailure("A", None))
-        replicator ! Get("A", ReadOne, timeout)
+        replicator ! Get("A", ReadLocal)
         expectMsg(GetSuccess("A", c4, None))
         changedProbe.expectMsg(Changed("A", c4))
 
         val c5 = c4 + 1
         // too strong consistency level
-        replicator ! Update("A", GCounter(), WriteQuorum, timeout)(_ + 1)
+        replicator ! Update("A", GCounter(), writeQuorum)(_ + 1)
         expectMsg(UpdateSuccess("A", None))
-        replicator ! Get("A", ReadQuorum, timeout)
+        replicator ! Get("A", readQuorum)
         expectMsg(GetSuccess("A", c5, None))
         changedProbe.expectMsg(Changed("A", c5))
 
         val c6 = c5 + 1
-        replicator ! Update("A", GCounter(), WriteAll, timeout)(_ + 1)
+        replicator ! Update("A", GCounter(), writeAll)(_ + 1)
         expectMsg(UpdateSuccess("A", None))
-        replicator ! Get("A", ReadAll, timeout)
+        replicator ! Get("A", readAll)
         expectMsg(GetSuccess("A", c6, None))
         changedProbe.expectMsg(Changed("A", c6))
 
         val c9 = GCounter() + 9
-        replicator ! Update("X", GCounter(), WriteOne, timeout)(_ + 9)
+        replicator ! Update("X", GCounter(), WriteLocal)(_ + 9)
         expectMsg(UpdateSuccess("X", None))
         changedProbe.expectMsg(Changed("X", c9))
-        replicator ! Delete("X", WriteOne, timeout)
+        replicator ! Delete("X", WriteLocal)
         expectMsg(DeleteSuccess("X"))
         changedProbe.expectMsg(DataDeleted("X"))
-        replicator ! Get("X", ReadOne, timeout)
+        replicator ! Get("X", ReadLocal)
         expectMsg(DataDeleted("X"))
-        replicator ! Get("X", ReadAll, timeout)
+        replicator ! Get("X", readAll)
         expectMsg(DataDeleted("X"))
-        replicator ! Update("X", GCounter())(_ + 1)
+        replicator ! Update("X", GCounter(), WriteLocal)(_ + 1)
         expectMsg(DataDeleted("X"))
-        replicator ! Delete("X", WriteOne, timeout)
+        replicator ! Delete("X", WriteLocal)
         expectMsg(DataDeleted("X"))
 
         replicator ! GetKeys
@@ -148,7 +154,7 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
       // "A" should be replicated via gossip to the new node
       within(5.seconds) {
         awaitAssert {
-          replicator ! Get("A", ReadOne, timeout)
+          replicator ! Get("A", ReadLocal)
           val c = expectMsgPF() { case GetSuccess("A", c: GCounter, _) ⇒ c }
           c.value should be(6)
         }
@@ -164,16 +170,16 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
 
     runOn(first, second) {
       // start with 20 on both nodes
-      replicator ! Update("B", GCounter())(_ + 20)
+      replicator ! Update("B", GCounter(), WriteLocal)(_ + 20)
       expectMsg(UpdateSuccess("B", None))
 
       // add 1 on both nodes using WriteTwo
-      replicator ! Update("B", GCounter(), WriteTwo, timeout)(_ + 1)
+      replicator ! Update("B", GCounter(), writeTwo)(_ + 1)
       expectMsg(UpdateSuccess("B", None))
 
       // the total, after replication should be 42
       awaitAssert {
-        replicator ! Get("B", ReadTwo, timeout)
+        replicator ! Get("B", readTwo)
         val c = expectMsgPF() { case GetSuccess("B", c: GCounter, _) ⇒ c }
         c.value should be(42)
       }
@@ -182,12 +188,12 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
 
     runOn(first, second) {
       // add 1 on both nodes using WriteAll
-      replicator ! Update("B", GCounter(), WriteAll, timeout)(_ + 1)
+      replicator ! Update("B", GCounter(), writeAll)(_ + 1)
       expectMsg(UpdateSuccess("B", None))
 
       // the total, after replication should be 44
       awaitAssert {
-        replicator ! Get("B", ReadAll, timeout)
+        replicator ! Get("B", readAll)
         val c = expectMsgPF() { case GetSuccess("B", c: GCounter, _) ⇒ c }
         c.value should be(44)
       }
@@ -196,12 +202,12 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
 
     runOn(first, second) {
       // add 1 on both nodes using WriteQuorum
-      replicator ! Update("B", GCounter(), WriteQuorum, timeout)(_ + 1)
+      replicator ! Update("B", GCounter(), writeQuorum)(_ + 1)
       expectMsg(UpdateSuccess("B", None))
 
       // the total, after replication should be 46
       awaitAssert {
-        replicator ! Get("B", ReadQuorum, timeout)
+        replicator ! Get("B", readQuorum)
         val c = expectMsgPF() { case GetSuccess("B", c: GCounter, _) ⇒ c }
         c.value should be(46)
       }
@@ -217,33 +223,33 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
     }
 
     runOn(first) {
-      replicator ! Update("C", GCounter(), WriteTwo, timeout)(_ + 30)
+      replicator ! Update("C", GCounter(), writeTwo)(_ + 30)
       expectMsg(UpdateSuccess("C", None))
       changedProbe.expectMsgPF() { case Changed("C", c: GCounter) ⇒ c.value } should be(30)
 
-      replicator ! Update("Y", GCounter(), WriteTwo, timeout)(_ + 30)
+      replicator ! Update("Y", GCounter(), writeTwo)(_ + 30)
       expectMsg(UpdateSuccess("Y", None))
 
-      replicator ! Update("Z", GCounter(), WriteQuorum, timeout)(_ + 30)
+      replicator ! Update("Z", GCounter(), writeQuorum)(_ + 30)
       expectMsg(UpdateSuccess("Z", None))
     }
     enterBarrier("update-c30")
 
     runOn(second) {
-      replicator ! Get("C", ReadOne, timeout)
+      replicator ! Get("C", ReadLocal)
       val c30 = expectMsgPF() { case GetSuccess("C", c: GCounter, _) ⇒ c }
       c30.value should be(30)
       changedProbe.expectMsgPF() { case Changed("C", c: GCounter) ⇒ c.value } should be(30)
 
-      // replicate with gossip after WriteOne
-      replicator ! Update("C", GCounter(), WriteOne, timeout)(_ + 1)
+      // replicate with gossip after WriteLocal
+      replicator ! Update("C", GCounter(), WriteLocal)(_ + 1)
       expectMsg(UpdateSuccess("C", None))
       changedProbe.expectMsgPF() { case Changed("C", c: GCounter) ⇒ c.value } should be(31)
 
-      replicator ! Delete("Y", WriteOne, timeout)
+      replicator ! Delete("Y", WriteLocal)
       expectMsg(DeleteSuccess("Y"))
 
-      replicator ! Get("Z", ReadQuorum, timeout)
+      replicator ! Get("Z", readQuorum)
       expectMsgPF() { case GetSuccess("Z", c: GCounter, _) ⇒ c.value } should be(30)
     }
     enterBarrier("update-c31")
@@ -252,11 +258,11 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
       // "C" and deleted "Y" should be replicated via gossip to the other node
       within(5.seconds) {
         awaitAssert {
-          replicator ! Get("C", ReadOne, timeout)
+          replicator ! Get("C", ReadLocal)
           val c = expectMsgPF() { case GetSuccess("C", c: GCounter, _) ⇒ c }
           c.value should be(31)
 
-          replicator ! Get("Y", ReadOne, timeout)
+          replicator ! Get("Y", ReadLocal)
           expectMsg(DataDeleted("Y"))
         }
       }
@@ -266,17 +272,17 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
 
     // and also for concurrent updates
     runOn(first, second) {
-      replicator ! Get("C", ReadOne, timeout)
+      replicator ! Get("C", ReadLocal)
       val c31 = expectMsgPF() { case GetSuccess("C", c: GCounter, _) ⇒ c }
       c31.value should be(31)
 
       val c32 = c31 + 1
-      replicator ! Update("C", GCounter(), WriteOne, timeout)(_ + 1)
+      replicator ! Update("C", GCounter(), WriteLocal)(_ + 1)
       expectMsg(UpdateSuccess("C", None))
 
       within(5.seconds) {
         awaitAssert {
-          replicator ! Get("C", ReadOne, timeout)
+          replicator ! Get("C", ReadLocal)
           val c = expectMsgPF() { case GetSuccess("C", c: GCounter, _) ⇒ c }
           c.value should be(33)
         }
@@ -288,7 +294,7 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
 
   "converge after partition" in {
     runOn(first) {
-      replicator ! Update("D", GCounter(), WriteTwo, timeout)(_ + 40)
+      replicator ! Update("D", GCounter(), writeTwo)(_ + 40)
       expectMsg(UpdateSuccess("D", None))
 
       testConductor.blackhole(first, second, Direction.Both).await
@@ -296,17 +302,17 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
     enterBarrier("blackhole-first-second")
 
     runOn(first, second) {
-      replicator ! Get("D", ReadOne, timeout)
+      replicator ! Get("D", ReadLocal)
       val c40 = expectMsgPF() { case GetSuccess("D", c: GCounter, _) ⇒ c }
       c40.value should be(40)
-      replicator ! Update("D", GCounter() + 1, WriteTwo, timeout)(_ + 1)
+      replicator ! Update("D", GCounter() + 1, writeTwo)(_ + 1)
       expectMsg(ReplicationUpdateFailure("D", None))
-      replicator ! Update("D", GCounter(), WriteTwo, timeout)(_ + 1)
+      replicator ! Update("D", GCounter(), writeTwo)(_ + 1)
       expectMsg(ReplicationUpdateFailure("D", None))
     }
     runOn(first) {
       for (n ← 1 to 30) {
-        replicator ! Update("D" + n, GCounter(), WriteOne, timeout)(_ + n)
+        replicator ! Update("D" + n, GCounter(), WriteLocal)(_ + n)
         expectMsg(UpdateSuccess("D" + n, None))
       }
     }
@@ -318,7 +324,7 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
     enterBarrier("passThrough-first-second")
 
     runOn(first, second) {
-      replicator ! Get("D", ReadTwo, timeout)
+      replicator ! Get("D", readTwo)
       val c44 = expectMsgPF() { case GetSuccess("D", c: GCounter, _) ⇒ c }
       c44.value should be(44)
 
@@ -326,7 +332,7 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
         awaitAssert {
           for (n ← 1 to 30) {
             val Key = "D" + n
-            replicator ! Get(Key, ReadOne, timeout)
+            replicator ! Get(Key, ReadLocal)
             expectMsgPF() { case GetSuccess(Key, c: GCounter, _) ⇒ c }.value should be(n)
           }
         }
@@ -350,13 +356,13 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
     enterBarrier("3-nodes")
 
     runOn(first, second, third) {
-      replicator ! Update("E", GCounter(), WriteQuorum, timeout)(_ + 50)
+      replicator ! Update("E", GCounter(), writeQuorum)(_ + 50)
       expectMsg(UpdateSuccess("E", None))
     }
     enterBarrier("write-inital-quorum")
 
     runOn(first, second, third) {
-      replicator ! Get("E", ReadQuorum, timeout)
+      replicator ! Get("E", readQuorum)
       val c150 = expectMsgPF() { case GetSuccess("E", c: GCounter, _) ⇒ c }
       c150.value should be(150)
     }
@@ -369,7 +375,7 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
     enterBarrier("blackhole-third")
 
     runOn(second) {
-      replicator ! Update("E", GCounter())(_ + 1)
+      replicator ! Update("E", GCounter(), WriteLocal)(_ + 1)
       expectMsg(UpdateSuccess("E", None))
     }
     enterBarrier("local-update-from-second")
@@ -378,14 +384,14 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
       // ReadQuorum should retrive the previous update from second, before applying the modification
       val probe1 = TestProbe()
       val probe2 = TestProbe()
-      replicator.tell(Update("E", GCounter(), ReadQuorum, WriteQuorum, timeout, None) { data =>
+      replicator.tell(Update("E", GCounter(), readQuorum, writeQuorum, None) { data =>
         probe1.ref ! data.value
         data + 1
       }, probe2.ref)
       // verify read your own writes, without waiting for the UpdateSuccess reply
       // note that the order of the replies are not defined, and therefore we use separate probes
       val probe3 = TestProbe()
-      replicator.tell(Get("E", ReadQuorum, timeout), probe3.ref)
+      replicator.tell(Get("E", readQuorum), probe3.ref)
       probe1.expectMsg(151)
       probe2.expectMsg(UpdateSuccess("E", None))
       val c152 = probe3.expectMsgPF() { case GetSuccess("E", c: GCounter, _) ⇒ c }
@@ -395,15 +401,15 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
 
     runOn(second) {
       val probe1 = TestProbe()
-      replicator.tell(Update("E", GCounter(), ReadQuorum, WriteQuorum, timeout, Some(153))(_ + 1), probe1.ref)
+      replicator.tell(Update("E", GCounter(), readQuorum, writeQuorum, Some(153))(_ + 1), probe1.ref)
       // verify read your own writes, without waiting for the UpdateSuccess reply
       // note that the order of the replies are not defined, and therefore we use separate probes
       val probe2 = TestProbe()
-      replicator.tell(Update("E", GCounter(), ReadOne, WriteQuorum, timeout, Some(154))(_ + 1), probe2.ref)
+      replicator.tell(Update("E", GCounter(), ReadLocal, writeQuorum, Some(154))(_ + 1), probe2.ref)
       val probe3 = TestProbe()
-      replicator.tell(Update("E", GCounter(), ReadQuorum, WriteQuorum, timeout, Some(155))(_ + 1), probe3.ref)
+      replicator.tell(Update("E", GCounter(), readQuorum, writeQuorum, Some(155))(_ + 1), probe3.ref)
       val probe5 = TestProbe()
-      replicator.tell(Get("E", ReadQuorum, timeout), probe5.ref)
+      replicator.tell(Get("E", readQuorum), probe5.ref)
       probe1.expectMsg(UpdateSuccess("E", Some(153)))
       probe2.expectMsg(UpdateSuccess("E", Some(154)))
       probe3.expectMsg(UpdateSuccess("E", Some(155)))
@@ -419,7 +425,7 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
     enterBarrier("passThrough-third")
 
     runOn(third) {
-      replicator ! Get("E", ReadQuorum, timeout)
+      replicator ! Get("E", readQuorum)
       val c155 = expectMsgPF() { case GetSuccess("E", c: GCounter, _) ⇒ c }
       c155.value should be(155)
     }
@@ -432,14 +438,14 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
       var c = GCounter()
       for (i ← 0 until 100) {
         c += 1
-        replicator ! Update("F", GCounter(), WriteTwo, timeout)(_ + 1)
+        replicator ! Update("F", GCounter(), writeTwo)(_ + 1)
       }
       val results = receiveN(100)
       results.map(_.getClass).toSet should be(Set(classOf[UpdateSuccess]))
     }
     enterBarrier("100-updates-done")
     runOn(first, second, third) {
-      replicator ! Get("F", ReadTwo, timeout)
+      replicator ! Get("F", readTwo)
       val c = expectMsgPF() { case GetSuccess("F", c: GCounter, _) ⇒ c }
       c.value should be(3 * 100)
     }
@@ -448,14 +454,14 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
 
   "read-repair happens before GetSuccess" in {
     runOn(first) {
-      replicator ! Update("G", ORSet(), WriteTwo, timeout)(_ + "a" + "b")
+      replicator ! Update("G", ORSet(), writeTwo)(_ + "a" + "b")
       expectMsgType[UpdateSuccess]
     }
     enterBarrier("a-b-added-to-G")
     runOn(second) {
-      replicator ! Get("G", ReadAll, timeout)
+      replicator ! Get("G", readAll)
       expectMsgPF() { case GetSuccess("G", c: ORSet, _) ⇒ c.value } should be(Set("a", "b"))
-      replicator ! Get("G", ReadOne, timeout)
+      replicator ! Get("G", ReadLocal)
       expectMsgPF() { case GetSuccess("G", c: ORSet, _) ⇒ c.value } should be(Set("a", "b"))
     }
     enterBarrier("after-8")

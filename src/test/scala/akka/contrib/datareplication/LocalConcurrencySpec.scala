@@ -28,7 +28,7 @@ object LocalConcurrencySpec {
 
     def receive = {
       case s: String =>
-        val update = Replicator.Update(key, ORSet.empty)(_ + s)
+        val update = Replicator.Update(key, ORSet.empty, Replicator.WriteLocal)(_ + s)
         replicator ! update
     }
   }
@@ -66,7 +66,7 @@ class LocalConcurrencySpec(_system: ActorSystem) extends TestKit(_system)
 
       val expected = ((1 to numMessages).map("a" + _) ++ (1 to numMessages).map("b" + _)).toSet
       awaitAssert {
-        replicator ! Replicator.Get("key")
+        replicator ! Replicator.Get("key", Replicator.ReadLocal)
         val ORSet(elements) = expectMsgType[Replicator.GetSuccess].data
         elements should be(expected)
       }

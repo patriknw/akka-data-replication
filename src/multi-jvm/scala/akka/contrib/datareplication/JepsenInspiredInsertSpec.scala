@@ -112,7 +112,7 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
       val writeProbe = TestProbe()
       val writeAcks = myData.map { i =>
         sleepDelay()
-        replicator.tell(Update(key, ORSet(), WriteOne, timeout, Some(i))(_ + i), writeProbe.ref)
+        replicator.tell(Update(key, ORSet(), WriteLocal, Some(i))(_ + i), writeProbe.ref)
         writeProbe.receiveOne(3.seconds)
       }
       val successWriteAcks = writeAcks.collect { case success: UpdateSuccess => success }
@@ -126,7 +126,7 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
       within(15.seconds) {
         awaitAssert {
           val readProbe = TestProbe()
-          replicator.tell(Get(key, ReadOne, timeout), readProbe.ref)
+          replicator.tell(Get(key, ReadLocal), readProbe.ref)
           val result = readProbe.expectMsgPF() { case GetSuccess(key, set: ORSet, _) ⇒ set }
           result.value should be(expectedData)
         }
@@ -139,11 +139,13 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
 
   "write/read to quorum when all nodes connected" in {
     val key = "B"
+    val readQuorum = ReadQuorum(timeout)
+    val writeQuorum = WriteQuorum(timeout)
     runOn(nodes: _*) {
       val writeProbe = TestProbe()
       val writeAcks = myData.map { i =>
         sleepDelay()
-        replicator.tell(Update(key, ORSet(), WriteQuorum, timeout, Some(i))(_ + i), writeProbe.ref)
+        replicator.tell(Update(key, ORSet(), writeQuorum, Some(i))(_ + i), writeProbe.ref)
         writeProbe.receiveOne(timeout + 1.second)
       }
       val successWriteAcks = writeAcks.collect { case success: UpdateSuccess => success }
@@ -157,7 +159,7 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
 
       // read from quorum of nodes, which is enough to retrieve all data
       val readProbe = TestProbe()
-      replicator.tell(Get(key, ReadQuorum, timeout), readProbe.ref)
+      replicator.tell(Get(key, readQuorum), readProbe.ref)
       val result = readProbe.expectMsgPF() { case GetSuccess(key, set: ORSet, _) ⇒ set }
       val survivors = result.value.size
       result.value should be(expectedData)
@@ -187,7 +189,7 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
       val writeProbe = TestProbe()
       val writeAcks = myData.map { i =>
         sleepDelay()
-        replicator.tell(Update(key, ORSet(), WriteOne, timeout, Some(i))(_ + i), writeProbe.ref)
+        replicator.tell(Update(key, ORSet(), WriteLocal, Some(i))(_ + i), writeProbe.ref)
         writeProbe.receiveOne(3.seconds)
       }
       val successWriteAcks = writeAcks.collect { case success: UpdateSuccess => success }
@@ -203,7 +205,7 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
       within(15.seconds) {
         awaitAssert {
           val readProbe = TestProbe()
-          replicator.tell(Get(key, ReadOne, timeout), readProbe.ref)
+          replicator.tell(Get(key, ReadLocal), readProbe.ref)
           val result = readProbe.expectMsgPF() { case GetSuccess(key, set: ORSet, _) ⇒ set }
           result.value should be(expectedData)
         }
@@ -216,6 +218,8 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
 
   "write to quorum during 3+2 partition and read from quorum after partition" in {
     val key = "D"
+    val readQuorum = ReadQuorum(timeout)
+    val writeQuorum = WriteQuorum(timeout)
     runOn(controller) {
       sleepBeforePartition()
       for (a <- List(n1, n4, n5); b <- List(n2, n3))
@@ -230,7 +234,7 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
       val writeProbe = TestProbe()
       val writeAcks = myData.map { i =>
         sleepDelay()
-        replicator.tell(Update(key, ORSet(), WriteQuorum, timeout, Some(i))(_ + i), writeProbe.ref)
+        replicator.tell(Update(key, ORSet(), writeQuorum, Some(i))(_ + i), writeProbe.ref)
         writeProbe.receiveOne(timeout + 1.second)
       }
       val successWriteAcks = writeAcks.collect { case success: UpdateSuccess => success }
@@ -249,10 +253,10 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
 
       enterBarrier("partition-healed-4")
 
-      // on the 2 node side, read from quorum of nodes is enough to read all writes  
+      // on the 2 node side, read from quorum of nodes is enough to read all writes
       runOn(n2, n3) {
         val readProbe = TestProbe()
-        replicator.tell(Get(key, ReadQuorum, timeout), readProbe.ref)
+        replicator.tell(Get(key, readQuorum), readProbe.ref)
         val result = readProbe.expectMsgPF() { case GetSuccess(key, set: ORSet, _) ⇒ set }
         val survivors = result.value.size
         result.value should be(expectedData)
@@ -264,7 +268,7 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
       within(15.seconds) {
         awaitAssert {
           val readProbe = TestProbe()
-          replicator.tell(Get(key, ReadOne, timeout), readProbe.ref)
+          replicator.tell(Get(key, ReadLocal), readProbe.ref)
           val result = readProbe.expectMsgPF() { case GetSuccess(key, set: ORSet, _) ⇒ set }
           result.value should be(expectedData)
         }

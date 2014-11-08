@@ -111,7 +111,7 @@ class PerformanceSpec extends MultiNodeSpec(PerformanceSpec) with STMultiNodeSpe
     within(20.seconds) {
       awaitAssert {
         val readProbe = TestProbe()
-        replicator.tell(Get(key), readProbe.ref)
+        replicator.tell(Get(key, ReadLocal), readProbe.ref)
         val result = readProbe.expectMsgPF() { case GetSuccess(key, set: ORSet, _) ⇒ set }
         result.value should be(expectedData)
       }
@@ -133,41 +133,41 @@ class PerformanceSpec extends MultiNodeSpec(PerformanceSpec) with STMultiNodeSpe
       enterBarrier("after-setup")
     }
 
-    "be great for ORSet Update WriteOne" in {
+    "be great for ORSet Update WriteLocal" in {
       val keys = (1 to repeatCount).map("A" + _)
       val n = 500 * factor
       val expectedData = (0 until n).toSet
-      repeat("ORSet Update WriteOne", keys, n)({ (key, i, replyTo) =>
-        replicator.tell(Update(key, ORSet())(_ + i), replyTo)
+      repeat("ORSet Update WriteLocal", keys, n)({ (key, i, replyTo) =>
+        replicator.tell(Update(key, ORSet(), WriteLocal)(_ + i), replyTo)
       }, key => awaitReplicated(key, expectedData))
 
       enterBarrier("after-1")
     }
 
-    "be blazingly fast for ORSet Get ReadOne" in {
+    "be blazingly fast for ORSet Get ReadLocal" in {
       val keys = (1 to repeatCount).map("A" + _)
-      repeat("Get ReadOne", keys, 1000000 * factor) { (key, i, replyTo) =>
-        replicator.tell(Get(key), replyTo)
+      repeat("Get ReadLocal", keys, 1000000 * factor) { (key, i, replyTo) =>
+        replicator.tell(Get(key, ReadLocal), replyTo)
       }
       enterBarrier("after-2")
     }
 
-    "be good for ORSet Update WriteOne and gossip replication" in {
+    "be good for ORSet Update WriteLocal and gossip replication" in {
       val keys = (1 to repeatCount).map("B" + _)
       val n = 500 * factor
       val expected = Some((0 until n).toSet)
-      repeat("ORSet Update WriteOne + gossip", keys, n, expected) { (key, i, replyTo) =>
-        replicator.tell(Update(key, ORSet())(_ + i), replyTo)
+      repeat("ORSet Update WriteLocal + gossip", keys, n, expected) { (key, i, replyTo) =>
+        replicator.tell(Update(key, ORSet(), WriteLocal)(_ + i), replyTo)
       }
       enterBarrier("after-3")
     }
 
-    "be good for ORSet Update WriteOne and gossip of existing keys" in {
+    "be good for ORSet Update WriteLocal and gossip of existing keys" in {
       val keys = (1 to repeatCount).map("B" + _)
       val n = 500 * factor
       val expected = Some((0 until n).toSet ++ (0 until n).map(-_).toSet)
-      repeat("ORSet Update WriteOne existing + gossip", keys, n, expected) { (key, i, replyTo) =>
-        replicator.tell(Update(key, ORSet())(_ + (-i)), replyTo)
+      repeat("ORSet Update WriteLocal existing + gossip", keys, n, expected) { (key, i, replyTo) =>
+        replicator.tell(Update(key, ORSet(), WriteLocal)(_ + (-i)), replyTo)
       }
       enterBarrier("after-4")
     }
@@ -176,13 +176,14 @@ class PerformanceSpec extends MultiNodeSpec(PerformanceSpec) with STMultiNodeSpe
       val keys = (1 to repeatCount).map("C" + _)
       val n = 500 * factor
       val expected = Some((0 until n).toSet)
+      val writeTwo = WriteTo(2, timeout)
       repeat("ORSet Update WriteTwo + gossip", keys, n, expected) { (key, i, replyTo) =>
-        replicator.tell(Update(key, ORSet(), WriteTwo, timeout)(_ + i), replyTo)
+        replicator.tell(Update(key, ORSet(), writeTwo)(_ + i), replyTo)
       }
       enterBarrier("after-5")
     }
 
-    "be awesome for GCounter Update WriteOne" in {
+    "be awesome for GCounter Update WriteLocal" in {
       val startTime = System.nanoTime()
       val n = 100000 * factor
       val key = "D"
@@ -190,7 +191,7 @@ class PerformanceSpec extends MultiNodeSpec(PerformanceSpec) with STMultiNodeSpe
         val latch = TestLatch(n)
         val replyTo = system.actorOf(countDownProps(latch))
         for (_ <- 0 until n)
-          replicator.tell(Update(key, GCounter())(_ + 1), replyTo)
+          replicator.tell(Update(key, GCounter(), WriteLocal)(_ + 1), replyTo)
         Await.ready(latch, 5.seconds * factor)
         enterBarrier("update-done-6")
         runOn(n1) {
@@ -207,7 +208,7 @@ class PerformanceSpec extends MultiNodeSpec(PerformanceSpec) with STMultiNodeSpe
       within(20.seconds) {
         awaitAssert {
           val readProbe = TestProbe()
-          replicator.tell(Get(key), readProbe.ref)
+          replicator.tell(Get(key, ReadLocal), readProbe.ref)
           val result = readProbe.expectMsgPF() { case GetSuccess(key, c: GCounter, _) ⇒ c }
           result.value should be(3 * n)
         }

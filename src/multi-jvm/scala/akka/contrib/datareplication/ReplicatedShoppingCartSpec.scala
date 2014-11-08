@@ -29,6 +29,7 @@ object ReplicatedShoppingCartSpec extends MultiNodeConfig {
 }
 
 object ShoppingCart {
+  import akka.contrib.datareplication.Replicator._
 
   def props(userId: String): Props = Props(new ShoppingCart(userId))
 
@@ -39,6 +40,10 @@ object ShoppingCart {
   case class Cart(items: Set[LineItem])
   case class LineItem(productId: String, title: String, quantity: Int)
 
+  private val timeout = 3.seconds
+  private val readQuorum = ReadQuorum(timeout)
+  private val writeQuorum = WriteQuorum(timeout)
+
 }
 
 class ShoppingCart(userId: String) extends Actor with Stash {
@@ -47,18 +52,18 @@ class ShoppingCart(userId: String) extends Actor with Stash {
 
   val replicator = DataReplication(context.system).replicator
   implicit val cluster = Cluster(context.system)
-  val timeout = 3.seconds
+
   val DataKey = "cart-" + userId
 
   def receive = {
     case AddItem(item) ⇒
-      val update = Update(DataKey, LWWMap(), ReadQuorum, WriteQuorum, timeout, None) {
+      val update = Update(DataKey, LWWMap(), readQuorum, writeQuorum, None) {
         cart => updateCart(cart, item)
       }
       replicator ! update
 
     case GetCart ⇒
-      replicator ! Get(DataKey, ReadQuorum, timeout, Some(sender()))
+      replicator ! Get(DataKey, readQuorum, Some(sender()))
 
     case GetSuccess(DataKey, data: LWWMap, Some(replyTo: ActorRef)) ⇒
       val cart = Cart(data.entries.values.map { case line: LineItem ⇒ line }.toSet)
@@ -69,16 +74,16 @@ class ShoppingCart(userId: String) extends Actor with Stash {
 
     case GetFailure(DataKey, Some(replyTo: ActorRef)) ⇒
       // ReadQuorum failure, try again with local read
-      replicator ! Get(DataKey, ReadOne, timeout, Some(replyTo))
+      replicator ! Get(DataKey, ReadLocal, Some(replyTo))
 
     case RemoveItem(productId) ⇒
-      val update = Update(DataKey, LWWMap(), ReadQuorum, WriteQuorum, timeout, None) {
+      val update = Update(DataKey, LWWMap(), readQuorum, writeQuorum, None) {
         _ - productId
       }
       replicator ! update
 
     case _: UpdateSuccess | _: ReplicationUpdateFailure ⇒
-    // ReplicationUpdateFailure, will eventually be replicated  
+    // ReplicationUpdateFailure, will eventually be replicated
   }
 
   def updateCart(data: LWWMap, item: LineItem): LWWMap =

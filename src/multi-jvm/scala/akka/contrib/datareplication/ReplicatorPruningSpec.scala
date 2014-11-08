@@ -76,26 +76,26 @@ class ReplicatorPruningSpec extends MultiNodeSpec(ReplicatorPruningSpec) with ST
         member.uniqueAddress
       }
 
-      replicator ! Update("A", GCounter(), WriteAll, timeout)(_ + 3)
+      replicator ! Update("A", GCounter(), WriteAll(timeout))(_ + 3)
       expectMsg(UpdateSuccess("A", None))
 
-      replicator ! Update("B", ORSet(), WriteAll, timeout)(_ + "a" + "b" + "c")
+      replicator ! Update("B", ORSet(), WriteAll(timeout))(_ + "a" + "b" + "c")
       expectMsg(UpdateSuccess("B", None))
 
-      replicator ! Update("C", PNCounterMap(), WriteAll, timeout)(_ increment "x" increment "y")
+      replicator ! Update("C", PNCounterMap(), WriteAll(timeout))(_ increment "x" increment "y")
       expectMsg(UpdateSuccess("C", None))
 
       enterBarrier("updates-done")
 
-      replicator ! Get("A", ReadOne, timeout)
+      replicator ! Get("A", ReadLocal)
       val oldCounter = expectMsgType[GetSuccess].data.asInstanceOf[GCounter]
       oldCounter.value should be(9)
 
-      replicator ! Get("B", ReadOne, timeout)
+      replicator ! Get("B", ReadLocal)
       val oldSet = expectMsgType[GetSuccess].data.asInstanceOf[ORSet]
       oldSet.value should be(Set("a", "b", "c"))
 
-      replicator ! Get("C", ReadOne, timeout)
+      replicator ! Get("C", ReadLocal)
       val oldMap = expectMsgType[GetSuccess].data.asInstanceOf[PNCounterMap]
       oldMap.get("x") should be(Some(3))
       oldMap.get("y") should be(Some(3))
@@ -119,7 +119,7 @@ class ReplicatorPruningSpec extends MultiNodeSpec(ReplicatorPruningSpec) with ST
       runOn(first, second) {
         within(15.seconds) {
           awaitAssert {
-            replicator ! Get("A", ReadOne, timeout)
+            replicator ! Get("A", ReadLocal)
             expectMsgPF() {
               case GetSuccess(_, c: GCounter, _) ⇒
                 c.value should be(9)
@@ -129,7 +129,7 @@ class ReplicatorPruningSpec extends MultiNodeSpec(ReplicatorPruningSpec) with ST
         }
         within(5.seconds) {
           awaitAssert {
-            replicator ! Get("B", ReadOne, timeout)
+            replicator ! Get("B", ReadLocal)
             expectMsgPF() {
               case GetSuccess(_, s: ORSet, _) ⇒
                 s.value should be(Set("a", "b", "c"))
@@ -139,7 +139,7 @@ class ReplicatorPruningSpec extends MultiNodeSpec(ReplicatorPruningSpec) with ST
         }
         within(5.seconds) {
           awaitAssert {
-            replicator ! Get("C", ReadOne, timeout)
+            replicator ! Get("C", ReadLocal)
             expectMsgPF() {
               case GetSuccess(_, m: PNCounterMap, _) ⇒
                 m.entries should be(Map("x" -> 3L, "y" -> 3L))
@@ -150,13 +150,13 @@ class ReplicatorPruningSpec extends MultiNodeSpec(ReplicatorPruningSpec) with ST
       }
       enterBarrier("pruning-done")
 
-      // on one of the nodes the data has been updated by the pruning, 
+      // on one of the nodes the data has been updated by the pruning,
       // client can update anyway
       def updateAfterPruning(expectedValue: Int): Unit = {
-        replicator ! Update("A", GCounter(), WriteAll, timeout, None)(_ + 1)
+        replicator ! Update("A", GCounter(), WriteAll(timeout), None)(_ + 1)
         expectMsgPF() {
           case UpdateSuccess("A", _) ⇒
-            replicator ! Get("A", ReadOne, timeout)
+            replicator ! Get("A", ReadLocal)
             val retrieved = expectMsgType[GetSuccess].data.asInstanceOf[GCounter]
             retrieved.value should be(expectedValue)
         }

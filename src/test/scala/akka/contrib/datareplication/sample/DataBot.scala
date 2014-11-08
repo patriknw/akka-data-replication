@@ -35,12 +35,12 @@ object DataBot {
                 port = 0
               }
             }
-            
+
             akka.cluster {
               seed-nodes = [
                 "akka.tcp://ClusterSystem@127.0.0.1:2551",
                 "akka.tcp://ClusterSystem@127.0.0.1:2552"]
-            
+
               auto-down-unreachable-after = 10s
             }
             """)))
@@ -75,14 +75,14 @@ class DataBot extends Actor with ActorLogging {
       if (ThreadLocalRandom.current().nextBoolean()) {
         // add
         log.info("Adding: {}", s)
-        replicator ! Update("key", ORSet())(_ + s)
+        replicator ! Update("key", ORSet(), WriteLocal)(_ + s)
       } else {
         // remove
         log.info("Removing: {}", s)
-        replicator ! Update("key", ORSet())(_ - s)
+        replicator ! Update("key", ORSet(), WriteLocal)(_ - s)
       }
 
-    case _: UpdateResponse => // ignore  
+    case _: UpdateResponse => // ignore
 
     case Changed("key", data: ORSet) =>
       log.info("Current elements: {}", data.value)

@@ -53,7 +53,7 @@ class VotingService extends Actor {
 
   def receive = {
     case Open ⇒
-      replicator ! Update(OpenedKey, Flag(), WriteAll, 5.seconds)(_.switchOn)
+      replicator ! Update(OpenedKey, Flag(), WriteAll(5.seconds))(_.switchOn)
       becomeOpen()
 
     case Changed(OpenedKey, flag: Flag) if flag.enabled ⇒
@@ -71,7 +71,7 @@ class VotingService extends Actor {
 
   def open: Receive = {
     case v @ Vote(participant) ⇒
-      val update = Update(CountersKey, PNCounterMap(), request = Some(v)) {
+      val update = Update(CountersKey, PNCounterMap(), WriteLocal, request = Some(v)) {
         _.increment(participant, 1)
       }
       replicator ! update
@@ -79,7 +79,7 @@ class VotingService extends Actor {
     case _: UpdateSuccess ⇒
 
     case Close ⇒
-      replicator ! Update(ClosedKey, Flag(), WriteAll, 5.seconds)(_.switchOn)
+      replicator ! Update(ClosedKey, Flag(), WriteAll(5.seconds))(_.switchOn)
       context.become(getVotes(open = false))
 
     case Changed(ClosedKey, flag: Flag) if flag.enabled ⇒
@@ -88,7 +88,7 @@ class VotingService extends Actor {
 
   def getVotes(open: Boolean): Receive = {
     case GetVotes ⇒
-      replicator ! Get(CountersKey, ReadAll, 3.seconds, Some(GetVotesReq(sender())))
+      replicator ! Get(CountersKey, ReadAll(3.seconds), Some(GetVotesReq(sender())))
 
     case GetSuccess(CountersKey, d: PNCounterMap, Some(GetVotesReq(replyTo))) ⇒
       replyTo ! Votes(d.entries, open)
