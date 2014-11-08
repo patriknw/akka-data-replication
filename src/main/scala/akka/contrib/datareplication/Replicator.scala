@@ -228,10 +228,11 @@ object Replicator {
    * for example not access `sender()` reference of an enclosing actor.
    *
    * If `readConsistency != ReadLocal` it will first retrieve the data from other nodes
-   * and then apply the `modify` function with the latest data. If the read fails the update
-   * will continue anyway, using the local value of the data.
+   * and then apply the `modify` function with the latest data. If the read fails a
+   * [[Replicator.ReadFailure]] is replied to the sender of the `Update`. In the
+   * case of `ReadFailure` the update is aborted and no data has been changed.
    * To support "read your own writes" all incoming commands for this key will be
-   * buffered until the read is completed and the function has been applied.
+   * buffered until the read is completed and the `modify` function has been applied.
    */
   case class Update[A <: ReplicatedData](key: String, readConsistency: ReadConsistency, writeConsistency: WriteConsistency,
                                          request: Option[Any])(val modify: Option[A] => A)
@@ -313,6 +314,11 @@ object Replicator {
    * crashes before it has been able to communicate with other replicas.
    */
   case class UpdateTimeout(key: String, request: Option[Any]) extends UpdateFailure
+  /**
+   * The [[Update]] could not fetch current value according to the given
+   * [[ReadConsistency readConsistency level]] and [[ReadConsistency#timeout timeout]].
+   */
+  case class ReadFailure(key: String, request: Option[Any]) extends UpdateFailure
   case class InvalidUsage(key: String, errorMessage: String, request: Option[Any])
     extends RuntimeException(errorMessage) with NoStackTrace with UpdateFailure {
     override def toString: String = s"InvalidUsage [$key]: $errorMessage"
@@ -785,7 +791,7 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
       // completed the update will continue, operating on the retrieved data, and replicate the
       // new value with the writeConsistency. Buffered commands are also processed when the read
       // is completed.
-      log.debug("Received Update for key [{}], reading from [{}]", key, readConsistency)
+      log.debug("Received Update for key [{}], with readConsistency [{}]", key, readConsistency)
       val req2 = Some(UpdateInProgress(Update(key, readConsistency, writeConsistency, req)(modify), replyTo))
       context.actorOf(ReadAggregator.props(key, readConsistency, req2, nodes, localValue, self))
       if (updateInProgressBuffer.isEmpty)
@@ -815,9 +821,9 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
       case NotFound(key, Some(UpdateInProgress(u @ Update(_, _, writeC, req), replyTo: ActorRef))) =>
         continueUpdateAfterRead(key, u.modify, writeC, req, replyTo)
       case GetFailure(key, Some(UpdateInProgress(u @ Update(_, readC, writeC, req), replyTo: ActorRef))) =>
-        // use local value
-        log.debug("Update [{}] reading from [{}] failed, using local value", key, readC)
-        continueUpdateAfterRead(key, u.modify, writeC, req, replyTo)
+        log.debug("Update [{}] with readConsistency [{}] failed, update aborted", key, readC)
+        replyTo ! ReadFailure(key, req)
+        drainUpdateInProgressBuffer(key)
       case other =>
         // FIXME perhaps throw IllegalStateException
         log.error("Unexpected reply [{}]", other)

@@ -56,11 +56,6 @@ class ShoppingCart(userId: String) extends Actor with Stash {
   val DataKey = "cart-" + userId
 
   def receive = {
-    case AddItem(item) ⇒
-      val update = Update(DataKey, LWWMap(), readQuorum, writeQuorum, None) {
-        cart => updateCart(cart, item)
-      }
-      replicator ! update
 
     case GetCart ⇒
       replicator ! Get(DataKey, readQuorum, Some(sender()))
@@ -76,11 +71,29 @@ class ShoppingCart(userId: String) extends Actor with Stash {
       // ReadQuorum failure, try again with local read
       replicator ! Get(DataKey, ReadLocal, Some(replyTo))
 
-    case RemoveItem(productId) ⇒
-      val update = Update(DataKey, LWWMap(), readQuorum, writeQuorum, None) {
+    case cmd @ AddItem(item) ⇒
+      val update = Update(DataKey, LWWMap(), readQuorum, writeQuorum, Some(cmd)) {
+        cart => updateCart(cart, item)
+      }
+      replicator ! update
+
+    case ReadFailure(DataKey, Some(AddItem(item))) =>
+      // ReadQuorum of Update failed, fall back to best effort local value
+      replicator ! Update(DataKey, LWWMap(), writeQuorum, None) {
+        cart => updateCart(cart, item)
+      }
+
+    case cmd @ RemoveItem(productId) ⇒
+      val update = Update(DataKey, LWWMap(), readQuorum, writeQuorum, Some(cmd)) {
         _ - productId
       }
       replicator ! update
+
+    case ReadFailure(DataKey, Some(RemoveItem(productId))) =>
+      // ReadQuorum of Update failed, fall back to best effort local value
+      replicator ! Update(DataKey, LWWMap(), writeQuorum, None) {
+        _ - productId
+      }
 
     case _: UpdateSuccess | _: UpdateTimeout ⇒
     // UpdateTimeout, will eventually be replicated
