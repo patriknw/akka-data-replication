@@ -200,11 +200,30 @@ object Replicator {
     /**
      * Retrieve value from other replicas with given `readConsistency` and then modify value and
      * replicate with given `writeConsistency`.
+     *
+     * If there is no current data value for the `key` the `initial` value will be
+     * passed to the `modify` function.
+     *
+     * The optional `request` context is included in the reply messages. This is a convenient
+     * way to pass contextual information (e.g. original sender) without having to use `ask`
+     * or local correlation data structures.
      */
     def apply[A <: ReplicatedData](
       key: String, initial: A, readConsistency: ReadConsistency, writeConsistency: WriteConsistency,
-      request: Option[Any] = None)(modify: A => A): Update[A] =
+      request: Option[Any])(modify: A => A): Update[A] =
       Update(key, readConsistency, writeConsistency, request)(modifyWithInitial(initial, modify))
+
+    /**
+     * Retrieve value from other replicas with given `readConsistency` and then modify value and
+     * replicate with given `writeConsistency`.
+     *
+     * If there is no current data value for the `key` the `initial` value will be
+     * passed to the `modify` function.
+     */
+    def apply[A <: ReplicatedData](
+      key: String, initial: A, readConsistency: ReadConsistency, writeConsistency: WriteConsistency)(
+        modify: A => A): Update[A] =
+      Update(key, readConsistency, writeConsistency, None)(modifyWithInitial(initial, modify))
 
     private def modifyWithInitial[A <: ReplicatedData](initial: A, modify: A => A): Option[A] => A = {
       case Some(data) => modify(data)
