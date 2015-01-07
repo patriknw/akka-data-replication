@@ -58,6 +58,12 @@ case class ORMultiMap private (private[akka] val map: ORMap)
     map.get(key).map { case v: ORSet ⇒ v.value }
 
   /**
+   * Get the set associated with the key if there is one, else return the given default.
+   */
+  def getOrElse(key: String, default: => Set[Any]): Set[Any] =
+    get(key).getOrElse(default)
+
+  /**
    * Convenience for put. Requires an implicit Cluster.
    */
   def +(entry: (String, Set[Any]))(implicit node: Cluster): ORMultiMap = {

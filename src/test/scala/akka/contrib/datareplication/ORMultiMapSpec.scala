@@ -97,6 +97,12 @@ class ORMultiMapSpec extends WordSpec with Matchers {
     m2.entries should be(expectedMerged)
   }
 
+  "return the value for an existing key and the default for a non-existing one when using getOrElse" in {
+    val m = ORMultiMap().addBinding(node1, "a", "A")
+    m.getOrElse("a", Set("B")) shouldBe Set("A")
+    m.getOrElse("b", Set("B")) shouldBe Set("B")
+  }
+
   "remove all bindings for a given key" in {
     val m = ORMultiMap().addBinding(node1, "a", "A1").addBinding(node1, "a", "A2").addBinding(node1, "b", "B1")
     val m2 = m.remove(node1, "a")

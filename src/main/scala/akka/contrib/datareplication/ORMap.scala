@@ -49,6 +49,8 @@ case class ORMap(
 
   def get(key: String): Option[ReplicatedData] = values.get(key)
 
+  def getOrElse(key: String, default: => ReplicatedData): ReplicatedData = values.getOrElse(key, default)
+
   /**
    * Adds an entry to the map
    */
