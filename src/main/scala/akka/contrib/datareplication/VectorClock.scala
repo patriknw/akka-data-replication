@@ -57,6 +57,7 @@ object VectorClock {
   private object Timestamp {
     final val Zero = 0L
     final val EndMarker = Long.MinValue
+    val counter = new AtomicLong(1L)
   }
 
   /**
@@ -105,10 +106,8 @@ final case class VectorClock(
    * INTERNAL API
    * Increment the version for the node passed as argument. Returns a new VectorClock.
    */
-  private[akka] def increment(node: UniqueAddress): VectorClock = {
-    val currentTimestamp = versions.getOrElse(node, Timestamp.Zero)
-    copy(versions = versions.updated(node, currentTimestamp + 1))
-  }
+  private[akka] def increment(node: UniqueAddress): VectorClock =
+    copy(versions = versions.updated(node, Timestamp.counter.getAndIncrement()))
 
   /**
    * Returns true if <code>this</code> and <code>that</code> are concurrent else false.

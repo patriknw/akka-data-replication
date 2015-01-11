@@ -82,13 +82,13 @@ class ReplicatedDataSerializerSpec extends TestKit(ActorSystem("ReplicatedDataSe
       checkSerialization(ORSet().add(address1, 1L).add(address2, 2L))
       checkSerialization(ORSet().add(address1, "a").add(address2, 2).add(address3, 3L).add(address3, address3))
 
-      checkSameContent(
-        ORSet().add(address1, "a").add(address2, "b"),
-        ORSet().add(address2, "b").add(address1, "a"))
+      val s1 = ORSet().add(address1, "a").add(address2, "b")
+      val s2 = ORSet().add(address2, "b").add(address1, "a")
+      checkSameContent(s1.merge(s2), s2.merge(s1))
 
-      checkSameContent(
-        ORSet().add(address1, "a").add(address2, 17).remove(address3, 17),
-        ORSet().add(address2, 17).remove(address3, 17).add(address1, "a"))
+      val s3 = ORSet().add(address1, "a").add(address2, 17).remove(address3, 17)
+      val s4 = ORSet().add(address2, 17).remove(address3, 17).add(address1, "a")
+      checkSameContent(s3.merge(s4), s4.merge(s3))
     }
 
     "serialize Flag" in {
@@ -173,12 +173,9 @@ class ReplicatedDataSerializerSpec extends TestKit(ActorSystem("ReplicatedDataSe
       checkSerialization(VectorClock().increment(address1))
       checkSerialization(VectorClock().increment(address1).increment(address2))
 
-      checkSameContent(
-        VectorClock().increment(address1).increment(address2).increment(address1),
-        VectorClock().increment(address2).increment(address1).increment(address1))
-      checkSameContent(
-        VectorClock().increment(address1).increment(address3),
-        VectorClock().increment(address3).increment(address1))
+      val v1 = VectorClock().increment(address1).increment(address1)
+      val v2 = VectorClock().increment(address2)
+      checkSameContent(v1.merge(v2), v2.merge(v1))
     }
 
   }

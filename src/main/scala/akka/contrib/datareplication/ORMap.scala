@@ -51,6 +51,10 @@ case class ORMap(
 
   def getOrElse(key: String, default: => ReplicatedData): ReplicatedData = values.getOrElse(key, default)
 
+  def contains(key: String): Boolean = values.contains(key)
+
+  def isEmpty: Boolean = values.isEmpty
+
   /**
    * Adds an entry to the map
    */
@@ -60,7 +64,17 @@ case class ORMap(
   }
 
   /**
-   * Adds an entry to the map
+   * Adds an entry to the map.
+   * Note that the new `value` will be merged with existing values
+   * on other nodes and the outcome depends on what `ReplicatedData`
+   * type that is used.
+   *
+   * Consider using [[#updated]] instead of `put` if you want modify
+   * existing entry.
+   *
+   * `IllegalArgumentException` is thrown if you try to replace an existing `ORSet`
+   * value, because important history can be lost when replacing the `ORSet` and
+   * undesired effects of merging will occur. Use [[ORMultiMap]] or [[#updated]] instead.
    */
   def put(node: Cluster, key: String, value: ReplicatedData): ORMap = put(node.selfUniqueAddress, key, value)
 
@@ -68,23 +82,63 @@ case class ORMap(
    * INTERNAL API
    */
   private[akka] def put(node: UniqueAddress, key: String, value: ReplicatedData): ORMap =
-    ORMap(keys.add(node, key), values.updated(key, value))
+    if (value.isInstanceOf[ORSet] && values.contains(key))
+      throw new IllegalArgumentException(
+        "`ORMap.put` must not be used to replace an existing `ORSet` " +
+          "value, because important history can be lost when replacing the `ORSet` and " +
+          "undesired effects of merging will occur. Use `ORMultiMap` or `ORMap.updated` instead.")
+    else
+      ORMap(keys.add(node, key), values.updated(key, value))
+
+  /**
+   * Scala API: Replace a value by applying the `modify` function on the existing value.
+   *
+   * If there is no current value for the `key` the `initial` value will be
+   * passed to the `modify` function.
+   */
+  def updated[A <: ReplicatedData](node: Cluster, key: String, initial: A)(modify: A => A): ORMap =
+    updated(node.selfUniqueAddress, key, initial)(modify)
+
+  /**
+   * Java API: Replace a value by applying the `modify` function on the existing value.
+   *
+   * If there is no current value for the `key` the `initial` value will be
+   * passed to the `modify` function.
+   */
+  def updated[A <: ReplicatedData](node: Cluster, key: String, initial: A, modify: akka.japi.Function[A, A]): ORMap =
+    updated(node, key, initial)(value => modify.apply(value))
+
+  /**
+   * INTERNAL API
+   */
+  private[akka] def updated[A <: ReplicatedData](node: UniqueAddress, key: String, initial: A)(modify: A => A): ORMap = {
+    val newValue = values.get(key) match {
+      case Some(old) => modify(old.asInstanceOf[A])
+      case _         => modify(initial)
+    }
+    ORMap(keys.add(node, key), values.updated(key, newValue))
+  }
 
   /**
    * Removes an entry from the map.
+   * Note that if there is a conflicting update on another node the entry will
+   * not be removed after merge.
    */
   def -(key: String)(implicit node: Cluster): ORMap = remove(node, key)
 
   /**
    * Removes an entry from the map.
+   * Note that if there is a conflicting update on another node the entry will
+   * not be removed after merge.
    */
   def remove(node: Cluster, key: String): ORMap = remove(node.selfUniqueAddress, key)
 
   /**
    * INTERNAL API
    */
-  private[akka] def remove(node: UniqueAddress, key: String): ORMap =
+  private[akka] def remove(node: UniqueAddress, key: String): ORMap = {
     ORMap(keys.remove(node, key), values - key)
+  }
 
   override def merge(that: ORMap): ORMap = {
     val mergedKeys = keys.merge(that.keys)

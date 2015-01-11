@@ -53,13 +53,8 @@ case class PNCounterMap(
   /**
    * INTERNAL API
    */
-  private[akka] def increment(node: UniqueAddress, key: String, delta: Long): PNCounterMap = {
-    val counter = underlying.get(key) match {
-      case Some(c: PNCounter) ⇒ c
-      case _                  ⇒ PNCounter()
-    }
-    copy(underlying.put(node, key, counter.increment(node, delta)))
-  }
+  private[akka] def increment(node: UniqueAddress, key: String, delta: Long): PNCounterMap =
+    copy(underlying.updated(node, key, PNCounter())(_.increment(node, delta)))
 
   /**
    * Decrement the counter with the delta specified.
@@ -79,22 +74,28 @@ case class PNCounterMap(
    * INTERNAL API
    */
   private[akka] def decrement(node: UniqueAddress, key: String, delta: Long): PNCounterMap = {
-    val counter = underlying.get(key) match {
-      case Some(c: PNCounter) ⇒ c
-      case _                  ⇒ PNCounter()
-    }
-    copy(underlying.put(node, key, counter.decrement(node, delta)))
+    copy(underlying.updated(node, key, PNCounter())(_.decrement(node, delta)))
   }
 
   /**
    * Removes an entry from the map.
+   * Note that if there is a conflicting update on another node the entry will
+   * not be removed after merge.
    */
   def -(key: String)(implicit node: Cluster): PNCounterMap = remove(node, key)
 
   /**
    * Removes an entry from the map.
+   * Note that if there is a conflicting update on another node the entry will
+   * not be removed after merge.
    */
   def remove(node: Cluster, key: String): PNCounterMap =
+    remove(node.selfUniqueAddress, key)
+
+  /**
+   * INTERNAL API
+   */
+  private[akka] def remove(node: UniqueAddress, key: String): PNCounterMap =
     copy(underlying.remove(node, key))
 
   override def merge(that: PNCounterMap): PNCounterMap =

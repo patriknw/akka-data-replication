@@ -146,6 +146,8 @@ case class ORSet(
 
   def contains(a: Any): Boolean = elements.contains(a)
 
+  def isEmpty: Boolean = elements.isEmpty
+
   /**
    * Adds an element to the set
    */
@@ -180,6 +182,16 @@ case class ORSet(
    */
   private[akka] def remove(node: UniqueAddress, element: Any): ORSet =
     copy(elements = elements - element)
+
+  /**
+   * Removes all elements from the set, but keeps the history.
+   */
+  def clear(node: Cluster): ORSet = clear(node.selfUniqueAddress)
+
+  /**
+   * INTERNAL API
+   */
+  private[akka] def clear(node: UniqueAddress): ORSet = copy(elements = Map.empty)
 
   /**
    * When element is in this Set but not in that Set:
