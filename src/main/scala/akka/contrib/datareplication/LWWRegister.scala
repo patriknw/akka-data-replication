@@ -8,33 +8,52 @@ import akka.cluster.UniqueAddress
 
 object LWWRegister {
 
+  abstract class Clock {
+    /**
+     * @param currentTimestamp the current `timestamp` value of the `LWWRegister`
+     */
+    def nextTimestamp(currentTimestamp: Long): Long
+  }
+
+  final case class ClockValue(value: Long) extends Clock {
+    override def nextTimestamp(currentTimestamp: Long): Long = value
+  }
+
+  /**
+   * The default [[Clock]] is using max value of `System.currentTimeMillis()`
+   * and `currentTimestamp + 1`.
+   */
+  val defaultClock = new Clock {
+    override def nextTimestamp(currentTimestamp: Long): Long =
+      math.max(System.currentTimeMillis(), currentTimestamp + 1)
+  }
+
   /**
    * INTERNAL API
    */
-  private[akka] def apply(node: UniqueAddress, initialValue: Any): LWWRegister =
-    new LWWRegister(node, initialValue, defaultClock(), defaultClock)
+  private[akka] def apply(node: UniqueAddress, initialValue: Any, clock: Clock): LWWRegister =
+    new LWWRegister(node, initialValue, clock.nextTimestamp(0L))
 
-  def apply(node: Cluster, initialValue: Any): LWWRegister =
-    apply(node.selfUniqueAddress, initialValue)
+  def apply(node: Cluster, initialValue: Any, clock: Clock = defaultClock): LWWRegister =
+    apply(node.selfUniqueAddress, initialValue, clock)
 
   /**
    * Java API
    */
   def create(node: Cluster, initialValue: Any): LWWRegister =
-    apply(node.selfUniqueAddress, initialValue)
+    apply(node, initialValue)
+
+  /**
+   * Java API
+   */
+  def create(node: Cluster, initialValue: Any, clock: Clock): LWWRegister =
+    apply(node, initialValue, clock)
 
   def unapply(value: Any): Option[Any] = value match {
     case r: LWWRegister ⇒ Some(r.value)
     case _              ⇒ None
   }
 
-  /**
-   * INTERNAL API
-   */
-  private[akka] abstract class Clock extends (() ⇒ Long) with Serializable
-  private[akka] val defaultClock = new Clock {
-    def apply() = System.currentTimeMillis()
-  }
 }
 
 /**
@@ -46,13 +65,17 @@ object LWWRegister {
  *
  * Merge takes the register updated by the node with lowest address (`UniqueAddress` is ordered)
  * if the timestamps are exactly the same.
+ *
+ * Instead of using timestamps based on ´System.currentTimeMillis()` time it is possible to
+ * use a timestamp value based on something else, for example an increasing version number
+ * from a database record that is used for optimistic concurrency control.
  */
 case class LWWRegister(
   private[akka] val node: UniqueAddress,
   private[akka] val state: Any,
-  private[akka] val timestamp: Long,
-  private[akka] val clock: LWWRegister.Clock)
+  val timestamp: Long)
   extends ReplicatedData with ReplicatedDataSerialization {
+  import LWWRegister.{ Clock, defaultClock }
 
   type T = LWWRegister
 
@@ -67,15 +90,18 @@ case class LWWRegister(
   def getValue(): AnyRef = state.asInstanceOf[AnyRef]
 
   def withValue(node: Cluster, value: Any): LWWRegister =
-    withValue(node.selfUniqueAddress, value)
+    withValue(node, value, defaultClock)
+
+  def withValue(node: Cluster, value: Any, clock: Clock): LWWRegister =
+    withValue(node.selfUniqueAddress, value, clock)
 
   def updatedBy: UniqueAddress = node
 
   /**
    * INTERNAL API
    */
-  private[akka] def withValue(node: UniqueAddress, value: Any): LWWRegister =
-    copy(node = node, state = value, timestamp = math.max(clock(), timestamp + 1))
+  private[akka] def withValue(node: UniqueAddress, value: Any, clock: Clock): LWWRegister =
+    copy(node = node, state = value, timestamp = clock.nextTimestamp(timestamp))
 
   override def merge(that: LWWRegister): LWWRegister =
     if (that.timestamp > this.timestamp) that

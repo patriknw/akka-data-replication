@@ -30,6 +30,7 @@ object LWWMap {
 case class LWWMap(
   private[akka] val underlying: ORMap = ORMap.empty)
   extends ReplicatedData with ReplicatedDataSerialization with RemovedNodePruning {
+  import LWWRegister.{ Clock, defaultClock }
 
   type T = LWWMap
 
@@ -52,15 +53,21 @@ case class LWWMap(
    * Adds an entry to the map
    */
   def put(node: Cluster, key: String, value: Any): LWWMap =
-    put(node.selfUniqueAddress, key, value)
+    put(node, key, value, defaultClock)
+
+  /**
+   * Adds an entry to the map
+   */
+  def put(node: Cluster, key: String, value: Any, clock: Clock): LWWMap =
+    put(node.selfUniqueAddress, key, value, clock)
 
   /**
    * INTERNAL API
    */
-  private[akka] def put(node: UniqueAddress, key: String, value: Any): LWWMap = {
+  private[akka] def put(node: UniqueAddress, key: String, value: Any, clock: Clock): LWWMap = {
     val newRegister = underlying.get(key) match {
-      case Some(r: LWWRegister) ⇒ r.withValue(node, value)
-      case _                    ⇒ LWWRegister(node, value)
+      case Some(r: LWWRegister) ⇒ r.withValue(node, value, clock)
+      case _                    ⇒ LWWRegister(node, value, clock)
     }
     copy(underlying.put(node, key, newRegister))
   }

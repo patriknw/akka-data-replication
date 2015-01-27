@@ -213,8 +213,7 @@ class ReplicatedDataSerializer(val system: ExtendedActorSystem) extends Serializ
     LWWRegister(
       uniqueAddressFromProto(lwwRegister.getNode),
       otherMessageFromProto(lwwRegister.getState),
-      lwwRegister.getTimestamp,
-      LWWRegister.defaultClock)
+      lwwRegister.getTimestamp)
 
   def gcounterToProto(gcounter: GCounter): rd.GCounter = {
     val b = rd.GCounter.newBuilder()

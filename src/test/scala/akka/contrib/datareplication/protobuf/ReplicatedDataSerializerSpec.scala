@@ -97,8 +97,9 @@ class ReplicatedDataSerializerSpec extends TestKit(ActorSystem("ReplicatedDataSe
     }
 
     "serialize LWWRegister" in {
-      checkSerialization(LWWRegister(address1, "value1"))
-      checkSerialization(LWWRegister(address1, "value2").withValue(address2, "value3"))
+      checkSerialization(LWWRegister(address1, "value1", LWWRegister.defaultClock))
+      checkSerialization(LWWRegister(address1, "value2", LWWRegister.defaultClock)
+        .withValue(address2, "value3", LWWRegister.defaultClock))
     }
 
     "serialize GCounter" in {
@@ -140,8 +141,9 @@ class ReplicatedDataSerializerSpec extends TestKit(ActorSystem("ReplicatedDataSe
 
     "serialize LWWMap" in {
       checkSerialization(LWWMap())
-      checkSerialization(LWWMap().put(address1, "a", "value1"))
-      checkSerialization(LWWMap().put(address1, "a", "value1").put(address2, "b", 17))
+      checkSerialization(LWWMap().put(address1, "a", "value1", LWWRegister.defaultClock))
+      checkSerialization(LWWMap().put(address1, "a", "value1", LWWRegister.defaultClock)
+        .put(address2, "b", 17, LWWRegister.defaultClock))
     }
 
     "serialize PNCounterMap" in {
