@@ -22,7 +22,7 @@ Built in data types:
 - Counters: `GCounter`, `PNCounter`
 - Registers: `LWWRegister`, `Flag`
 - Sets: `GSet`, `ORSet`
-- Maps: `ORMap`, `LWWMap`, `PNCounterMap`
+- Maps: `ORMap`, `LWWMap`, `PNCounterMap`, `ORMultiMap`
 
 You can use your own custom data types by implementing the `merge` function of the `ReplicatedData`
 trait. Note that CRDTs typically compose nicely, i.e. you can use the provided data types to build richer
