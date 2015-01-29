@@ -80,10 +80,12 @@ More detailed documentation can be found in the
 [ScalaDoc](http://dl.bintray.com/patriknw/maven/com/github/patriknw/akka-data-replication_2.11/0.8/akka-data-replication_2.11-0.8-javadoc.jar)
 of `Replicator` and linked classes.
 
-Two other examples:
+Other examples:
 
-- [VotingService](https://github.com/patriknw/akka-data-replication/blob/v0.8/src/multi-jvm/scala/akka/contrib/datareplication/VotingContestSpec.scala#L30)
-- [ShoppingCart](https://github.com/patriknw/akka-data-replication/blob/v0.8/src/multi-jvm/scala/akka/contrib/datareplication/ReplicatedShoppingCartSpec.scala#L31)
+- [Replicated Cache](https://github.com/patriknw/akka-data-replication/blob/v0.9/src/multi-jvm/scala/sample/datareplication/ReplicatedCacheSpec.scala#L30)
+- [Replicated Metrics](https://github.com/patriknw/akka-data-replication/blob/v0.9/src/multi-jvm/scala/sample/datareplication/ReplicatedMetricsSpec.scala#L30)
+- [VotingService](https://github.com/patriknw/akka-data-replication/blob/v0.9/src/multi-jvm/scala/sample/datareplication/VotingContestSpec.scala#L30)
+- [ShoppingCart](https://github.com/patriknw/akka-data-replication/blob/v0.9/src/multi-jvm/scala/sample/datareplication/ReplicatedShoppingCartSpec.scala#L31)
 
 Dependency
 ----------

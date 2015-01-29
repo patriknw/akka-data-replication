@@ -1,7 +1,7 @@
 /**
  * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
  */
-package akka.contrib.datareplication
+package sample.datareplication
 
 import java.lang.management.ManagementFactory
 import java.lang.management.MemoryMXBean
@@ -12,6 +12,9 @@ import akka.actor.Address
 import akka.actor.Props
 import akka.cluster.Cluster
 import akka.cluster.ClusterEvent.{ InitialStateAsEvents, MemberUp, MemberRemoved }
+import akka.contrib.datareplication.DataReplication
+import akka.contrib.datareplication.LWWMap
+import akka.contrib.datareplication.STMultiNodeSpec
 import akka.remote.testconductor.RoleName
 import akka.remote.testkit.MultiNodeConfig
 import akka.remote.testkit.MultiNodeSpec
