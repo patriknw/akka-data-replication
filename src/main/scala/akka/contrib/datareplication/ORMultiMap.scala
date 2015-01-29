@@ -78,23 +78,14 @@ case class ORMultiMap private[akka] (private[akka] val underlying: ORMap)
   def put[T](node: Cluster, key: String, value: Set[T]): ORMultiMap =
     put(node.selfUniqueAddress, key, value)
 
-  /*
-   * Remove all elements of a set and then merge in elements of a new set so that we may retain the replicated
-   * data history throughout.
-   * TODO: We may wish to consider optimising this as the code isn't the most efficient. Ideally we should be able to remove all entries of an ORSet in one go. The same goes for adding to an ORSet in bulk.
-   */
-  private def removeAndMerge(node: UniqueAddress, newValue: ORSet)(oldValue: ORSet): ORSet =
-    oldValue.value.diff(newValue.value)
-      .foldLeft(oldValue) { (value, element) ⇒ value.remove(node, element) }
-      .merge(newValue)
-
   /**
    * INTERNAL API
    */
   private[akka] def put[T](node: UniqueAddress, key: String, value: Set[T]): ORMultiMap = {
-    val newValue = value.foldLeft(ORSet.empty)((v, e) ⇒ v.add(node, e))
-    val values = updateOrInit(key, removeAndMerge(node, newValue), newValue)
-    ORMultiMap(underlying.put(node, key, values))
+    val newUnderlying = underlying.updated(node, key, ORSet.empty) { existing =>
+      value.foldLeft(existing.clear(node)) { (s, element) => s.add(node, element) }
+    }
+    ORMultiMap(newUnderlying)
   }
 
   /**
@@ -125,8 +116,8 @@ case class ORMultiMap private[akka] (private[akka] val underlying: ORMap)
    * INTERNAL API
    */
   private[akka] def addBinding(node: UniqueAddress, key: String, element: Any): ORMultiMap = {
-    val values = updateOrInit(key, _.add(node, element), ORSet.empty.add(node, element))
-    ORMultiMap(underlying.put(node, key, values))
+    val newUnderlying = underlying.updated(node, key, ORSet.empty)(_.add(node, element))
+    ORMultiMap(newUnderlying)
   }
 
   /**
@@ -140,11 +131,14 @@ case class ORMultiMap private[akka] (private[akka] val underlying: ORMap)
    * INTERNAL API
    */
   private[akka] def removeBinding(node: UniqueAddress, key: String, element: Any): ORMultiMap = {
-    val values = updateOrInit(key, _.remove(node, element), ORSet.empty)
-    if (values.value.nonEmpty)
-      ORMultiMap(underlying.put(node, key, values))
-    else
-      ORMultiMap(underlying.remove(node, key))
+    val newUnderlying = {
+      val u = underlying.updated(node, key, ORSet.empty)(_.remove(node, element))
+      u.get(key) match {
+        case Some(s: ORSet) if s.isEmpty => u.remove(node, key)
+        case _                           => u
+      }
+    }
+    ORMultiMap(newUnderlying)
   }
 
   /**
@@ -163,12 +157,6 @@ case class ORMultiMap private[akka] (private[akka] val underlying: ORMap)
       addBinding(node, key, newElement).removeBinding(node, key, oldElement)
     else
       this
-
-  private def updateOrInit(key: String, update: ORSet ⇒ ORSet, init: ⇒ ORSet): ORSet =
-    underlying.get(key) match {
-      case Some(values: ORSet) ⇒ update(values)
-      case _                   ⇒ init
-    }
 
   override def needPruningFrom(removedNode: UniqueAddress): Boolean =
     underlying.needPruningFrom(removedNode)

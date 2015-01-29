@@ -67,11 +67,15 @@ case class LWWMap(
 
   /**
    * Removes an entry from the map.
+   * Note that if there is a conflicting update on another node the entry will
+   * not be removed after merge.
    */
   def -(key: String)(implicit node: Cluster): LWWMap = remove(node, key)
 
   /**
    * Removes an entry from the map.
+   * Note that if there is a conflicting update on another node the entry will
+   * not be removed after merge.
    */
   def remove(node: Cluster, key: String): LWWMap =
     copy(underlying.remove(node, key))
