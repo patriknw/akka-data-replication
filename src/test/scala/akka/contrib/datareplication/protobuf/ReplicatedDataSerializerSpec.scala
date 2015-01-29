@@ -16,6 +16,7 @@ import akka.contrib.datareplication.GSet
 import akka.contrib.datareplication.LWWMap
 import akka.contrib.datareplication.LWWRegister
 import akka.contrib.datareplication.ORMap
+import akka.contrib.datareplication.ORMultiMap
 import akka.contrib.datareplication.ORSet
 import akka.contrib.datareplication.PNCounter
 import akka.contrib.datareplication.PNCounterMap
@@ -148,6 +149,19 @@ class ReplicatedDataSerializerSpec extends TestKit(ActorSystem("ReplicatedDataSe
       checkSerialization(PNCounterMap().increment(address1, "a", 3))
       checkSerialization(PNCounterMap().increment(address1, "a", 3).decrement(address2, "a", 2).
         increment(address2, "b", 5))
+    }
+
+    "serialize ORMultiMap" in {
+      checkSerialization(ORMultiMap())
+      checkSerialization(ORMultiMap().addBinding(address1, "a", "A"))
+      checkSerialization(ORMultiMap()
+        .addBinding(address1, "a", "A1")
+        .put(address2, "b", Set("B1", "B2", "B3"))
+        .addBinding(address2, "a", "A2"))
+
+      val m1 = ORMultiMap().addBinding(address1, "a", "A1").addBinding(address2, "a", "A2")
+      val m2 = ORMultiMap().put(address2, "b", Set("B1", "B2", "B3"))
+      checkSameContent(m1.merge(m2), m2.merge(m1))
     }
 
     "serialize DeletedData" in {

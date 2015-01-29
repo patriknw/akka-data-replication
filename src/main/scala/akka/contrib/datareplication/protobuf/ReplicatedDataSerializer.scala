@@ -17,6 +17,7 @@ import akka.contrib.datareplication.GSet
 import akka.contrib.datareplication.LWWMap
 import akka.contrib.datareplication.LWWRegister
 import akka.contrib.datareplication.ORMap
+import akka.contrib.datareplication.ORMultiMap
 import akka.contrib.datareplication.ORSet
 import akka.contrib.datareplication.PNCounter
 import akka.contrib.datareplication.PNCounterMap
@@ -47,6 +48,7 @@ class ReplicatedDataSerializer(val system: ExtendedActorSystem) extends Serializ
     classOf[ORMap] -> ormapFromBinary,
     classOf[LWWMap] -> lwwmapFromBinary,
     classOf[PNCounterMap] -> pncountermapFromBinary,
+    classOf[ORMultiMap] -> multimapFromBinary,
     DeletedData.getClass -> (_ ⇒ DeletedData),
     classOf[VectorClock] -> vectorClockFromBinary)
 
@@ -60,6 +62,7 @@ class ReplicatedDataSerializer(val system: ExtendedActorSystem) extends Serializ
     case m: ORMap        ⇒ compress(ormapToProto(m))
     case m: LWWMap       ⇒ compress(lwwmapToProto(m))
     case m: PNCounterMap ⇒ compress(pncountermapToProto(m))
+    case m: ORMultiMap   ⇒ compress(multimapToProto(m))
     case DeletedData     ⇒ dm.Empty.getDefaultInstance.toByteArray
     case m: VectorClock  ⇒ vectorClockToProto(m).toByteArray
     case _ ⇒
@@ -319,6 +322,26 @@ class ReplicatedDataSerializer(val system: ExtendedActorSystem) extends Serializ
       entry.getKey -> pncounterFromProto(entry.getValue)).toMap
     PNCounterMap(ORMap(
       keys = orsetFromProto(pncountermap.getKeys),
+      entries))
+  }
+
+  def multimapToProto(multimap: ORMultiMap): rd.ORMultiMap = {
+    val b = rd.ORMultiMap.newBuilder().setKeys(orsetToProto(multimap.underlying.keys))
+    multimap.underlying.entries.toVector.sortBy { case (key, _) ⇒ key }.foreach {
+      case (key, value: ORSet) ⇒ b.addEntries(rd.ORMultiMap.Entry.newBuilder().
+        setKey(key).setValue(orsetToProto(value)))
+    }
+    b.build()
+  }
+
+  def multimapFromBinary(bytes: Array[Byte]): ORMultiMap =
+    multimapFromProto(rd.ORMultiMap.parseFrom(decompress(bytes)))
+
+  def multimapFromProto(multimap: rd.ORMultiMap): ORMultiMap = {
+    val entries = multimap.getEntriesList.asScala.map(entry ⇒
+      entry.getKey -> orsetFromProto(entry.getValue)).toMap
+    ORMultiMap(ORMap(
+      keys = orsetFromProto(multimap.getKeys),
       entries))
   }
 
