@@ -29,7 +29,7 @@ object ORMultiMap {
  * An immutable multi-map implementation. This class wraps an
  * [[ORMap]] with an [[ORSet]] for the map's value.
  */
-case class ORMultiMap private[akka] (private[akka] val underlying: ORMap)
+final case class ORMultiMap private[akka] (private[akka] val underlying: ORMap)
   extends ReplicatedData with ReplicatedDataSerialization with RemovedNodePruning {
 
   override type T = ORMultiMap

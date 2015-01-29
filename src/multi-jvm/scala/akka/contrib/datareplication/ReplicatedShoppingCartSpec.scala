@@ -34,11 +34,11 @@ object ShoppingCart {
   def props(userId: String): Props = Props(new ShoppingCart(userId))
 
   case object GetCart
-  case class AddItem(item: LineItem)
-  case class RemoveItem(productId: String)
+  final case class AddItem(item: LineItem)
+  final case class RemoveItem(productId: String)
 
-  case class Cart(items: Set[LineItem])
-  case class LineItem(productId: String, title: String, quantity: Int)
+  final case class Cart(items: Set[LineItem])
+  final case class LineItem(productId: String, title: String, quantity: Int)
 
   private val timeout = 3.seconds
   private val readQuorum = ReadQuorum(timeout)

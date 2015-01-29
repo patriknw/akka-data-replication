@@ -27,7 +27,7 @@ object ORMap {
  * concurrent updates the values are merged, and must therefore be [[ReplicatedData]]
  * themselves.
  */
-case class ORMap(
+final case class ORMap(
   private[akka] val keys: ORSet = ORSet(),
   private[akka] val values: Map[String, ReplicatedData] = Map.empty)
   extends ReplicatedData with ReplicatedDataSerialization with RemovedNodePruning {

@@ -50,7 +50,7 @@ object ReplicatorSettings {
   }
 }
 
-case class ReplicatorSettings(
+final case class ReplicatorSettings(
   role: Option[String],
   gossipInterval: FiniteDuration = 2.second,
   notifySubscribersInterval: FiniteDuration = 500.millis,
@@ -83,11 +83,11 @@ object Replicator {
   case object ReadLocal extends ReadConsistency {
     override def timeout: FiniteDuration = Duration.Zero
   }
-  case class ReadFrom(n: Int, timeout: FiniteDuration) extends ReadConsistency {
+  final case class ReadFrom(n: Int, timeout: FiniteDuration) extends ReadConsistency {
     require(n >= 2, "ReadFrom n must be >= 2, use ReadLocal for n=1")
   }
-  case class ReadQuorum(timeout: FiniteDuration) extends ReadConsistency
-  case class ReadAll(timeout: FiniteDuration) extends ReadConsistency
+  final case class ReadQuorum(timeout: FiniteDuration) extends ReadConsistency
+  final case class ReadAll(timeout: FiniteDuration) extends ReadConsistency
 
   sealed trait WriteConsistency {
     def timeout: FiniteDuration
@@ -95,11 +95,11 @@ object Replicator {
   case object WriteLocal extends WriteConsistency {
     override def timeout: FiniteDuration = Duration.Zero
   }
-  case class WriteTo(n: Int, timeout: FiniteDuration) extends WriteConsistency {
+  final case class WriteTo(n: Int, timeout: FiniteDuration) extends WriteConsistency {
     require(n >= 2, "WriteTo n must be >= 2, use WriteLocal for n=1")
   }
-  case class WriteQuorum(timeout: FiniteDuration) extends WriteConsistency
-  case class WriteAll(timeout: FiniteDuration) extends WriteConsistency
+  final case class WriteQuorum(timeout: FiniteDuration) extends WriteConsistency
+  final case class WriteAll(timeout: FiniteDuration) extends WriteConsistency
 
   /**
    * Java API: The [[ReadLocal]] instance
@@ -116,7 +116,7 @@ object Replicator {
    * Java API: The [[GetKeys]] instance
    */
   def GetKeysInstance = GetKeys
-  case class GetKeysResult(keys: Set[String]) {
+  final case class GetKeysResult(keys: Set[String]) {
     /**
      * Java API
      */
@@ -138,7 +138,7 @@ object Replicator {
    * way to pass contextual information (e.g. original sender) without having to use `ask`
    * or local correlation data structures.
    */
-  case class Get(key: String, consistency: ReadConsistency, request: Option[Any] = None)
+  final case class Get(key: String, consistency: ReadConsistency, request: Option[Any] = None)
     extends Command with ReplicatorMessage {
     /**
      * Java API: `Get` value from local `Replicator`, i.e. `ReadLocal` consistency.
@@ -148,15 +148,15 @@ object Replicator {
   sealed trait GetResponse {
     def key: String
   }
-  case class GetSuccess(key: String, data: ReplicatedData, request: Option[Any])
+  final case class GetSuccess(key: String, data: ReplicatedData, request: Option[Any])
     extends ReplicatorMessage with GetResponse
-  case class NotFound(key: String, request: Option[Any])
+  final case class NotFound(key: String, request: Option[Any])
     extends ReplicatorMessage with GetResponse
   /**
    * The [[Get]] request could not be fulfill according to the given
    * [[ReadConsistency consistency level]] and [[ReadConsistency#timeout timeout]].
    */
-  case class GetFailure(key: String, request: Option[Any])
+  final case class GetFailure(key: String, request: Option[Any])
     extends ReplicatorMessage with GetResponse
 
   /**
@@ -169,16 +169,16 @@ object Replicator {
    * If the key is deleted the subscriber is notified with a [[DataDeleted]]
    * message.
    */
-  case class Subscribe(key: String, subscriber: ActorRef) extends ReplicatorMessage
+  final case class Subscribe(key: String, subscriber: ActorRef) extends ReplicatorMessage
   /**
    * Unregister a subscriber.
    * @see [[Subscribe]]
    */
-  case class Unsubscribe(key: String, subscriber: ActorRef) extends ReplicatorMessage
+  final case class Unsubscribe(key: String, subscriber: ActorRef) extends ReplicatorMessage
   /**
    * @see [[Subscribe]]
    */
-  case class Changed(key: String, data: ReplicatedData) extends ReplicatorMessage
+  final case class Changed(key: String, data: ReplicatedData) extends ReplicatorMessage
 
   object Update {
 
@@ -253,7 +253,7 @@ object Replicator {
    * To support "read your own writes" all incoming commands for this key will be
    * buffered until the read is completed and the `modify` function has been applied.
    */
-  case class Update[A <: ReplicatedData](key: String, readConsistency: ReadConsistency, writeConsistency: WriteConsistency,
+  final case class Update[A <: ReplicatedData](key: String, readConsistency: ReadConsistency, writeConsistency: WriteConsistency,
                                          request: Option[Any])(val modify: Option[A] => A)
     extends Command {
 
@@ -318,7 +318,7 @@ object Replicator {
   sealed trait UpdateResponse {
     def key: String
   }
-  case class UpdateSuccess(key: String, request: Option[Any]) extends UpdateResponse
+  final case class UpdateSuccess(key: String, request: Option[Any]) extends UpdateResponse
   sealed trait UpdateFailure extends UpdateResponse {
     def key: String
     def request: Option[Any]
@@ -332,13 +332,13 @@ object Replicator {
    * It will eventually be disseminated to other replicas, unless the local replica
    * crashes before it has been able to communicate with other replicas.
    */
-  case class UpdateTimeout(key: String, request: Option[Any]) extends UpdateFailure
+  final case class UpdateTimeout(key: String, request: Option[Any]) extends UpdateFailure
   /**
    * The [[Update]] could not fetch current value according to the given
    * [[ReadConsistency readConsistency level]] and [[ReadConsistency#timeout timeout]].
    */
-  case class ReadFailure(key: String, request: Option[Any]) extends UpdateFailure
-  case class InvalidUsage(key: String, errorMessage: String, request: Option[Any])
+  final case class ReadFailure(key: String, request: Option[Any]) extends UpdateFailure
+  final case class InvalidUsage(key: String, errorMessage: String, request: Option[Any])
     extends RuntimeException(errorMessage) with NoStackTrace with UpdateFailure {
     override def toString: String = s"InvalidUsage [$key]: $errorMessage"
   }
@@ -346,7 +346,7 @@ object Replicator {
    * If the `modify` function of the [[Update]] throws an exception the reply message
    * will be this `ModifyFailure` message. The original exception is included as `cause`.
    */
-  case class ModifyFailure(key: String, errorMessage: String, cause: Throwable, request: Option[Any])
+  final case class ModifyFailure(key: String, errorMessage: String, cause: Throwable, request: Option[Any])
     extends RuntimeException(errorMessage, cause) with NoStackTrace with UpdateFailure {
     override def toString: String = s"ModifyFailure [$key]: $errorMessage"
   }
@@ -355,14 +355,14 @@ object Replicator {
    * Send this message to the local `Replicator` to delete a data value for the
    * given `key`. The `Replicator` will reply with one of the [[DeleteResponse]] messages.
    */
-  case class Delete(key: String, consistency: WriteConsistency) extends Command
+  final case class Delete(key: String, consistency: WriteConsistency) extends Command
 
   sealed trait DeleteResponse {
     def key: String
   }
-  case class DeleteSuccess(key: String) extends DeleteResponse
-  case class ReplicationDeleteFailure(key: String) extends DeleteResponse
-  case class DataDeleted(key: String)
+  final case class DeleteSuccess(key: String) extends DeleteResponse
+  final case class ReplicationDeleteFailure(key: String) extends DeleteResponse
+  final case class DataDeleted(key: String)
     extends RuntimeException with NoStackTrace with DeleteResponse {
     override def toString: String = s"DataDeleted [$key]"
   }
@@ -382,14 +382,14 @@ object Replicator {
     case object NotifySubscribersTick
     case object RemovedNodePruningTick
     case object ClockTick
-    case class Write(key: String, envelope: DataEnvelope) extends ReplicatorMessage
+    final case class Write(key: String, envelope: DataEnvelope) extends ReplicatorMessage
     case object WriteAck extends ReplicatorMessage
-    case class Read(key: String) extends ReplicatorMessage
-    case class ReadResult(envelope: Option[DataEnvelope]) extends ReplicatorMessage
-    case class ReadRepair(key: String, envelope: DataEnvelope)
+    final case class Read(key: String) extends ReplicatorMessage
+    final case class ReadResult(envelope: Option[DataEnvelope]) extends ReplicatorMessage
+    final case class ReadRepair(key: String, envelope: DataEnvelope)
     case object ReadRepairAck
-    case class BufferedCommand(cmd: Command, replyTo: ActorRef)
-    case class UpdateInProgress(cmd: Update[ReplicatedData], replyTo: ActorRef)
+    final case class BufferedCommand(cmd: Command, replyTo: ActorRef)
+    final case class UpdateInProgress(cmd: Update[ReplicatedData], replyTo: ActorRef)
 
     // Gossip Status message contains SHA-1 digests of the data to determine when
     // to send the full data
@@ -398,7 +398,7 @@ object Replicator {
     val LazyDigest: Digest = ByteString(0)
     val NotFoundDigest: Digest = ByteString(-1)
 
-    case class DataEnvelope(
+    final case class DataEnvelope(
       data: ReplicatedData,
       pruning: Map[UniqueAddress, PruningState] = Map.empty)
       extends ReplicatorMessage {
@@ -466,17 +466,17 @@ object Replicator {
       override def merge(that: ReplicatedData): ReplicatedData = DeletedData
     }
 
-    case class Status(digests: Map[String, Digest]) extends ReplicatorMessage {
+    final case class Status(digests: Map[String, Digest]) extends ReplicatorMessage {
       override def toString: String =
         (digests.map {
           case (key, bytes) => key + " -> " + bytes.map(byte => f"$byte%02x").mkString("")
         }).mkString("Status(", ", ", ")")
     }
-    case class Gossip(updatedData: Map[String, DataEnvelope], sendBack: Boolean) extends ReplicatorMessage
+    final case class Gossip(updatedData: Map[String, DataEnvelope], sendBack: Boolean) extends ReplicatorMessage
 
     // Testing purpose
     case object GetNodeCount
-    case class NodeCount(n: Int)
+    final case class NodeCount(n: Int)
   }
 }
 

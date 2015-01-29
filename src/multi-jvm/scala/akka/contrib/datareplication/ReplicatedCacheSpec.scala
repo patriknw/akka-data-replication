@@ -32,12 +32,12 @@ object ReplicatedCache {
 
   def props: Props = Props[ReplicatedCache]
 
-  private case class Request(key: String, replyTo: ActorRef)
+  private final case class Request(key: String, replyTo: ActorRef)
 
-  case class PutInCache(key: String, value: Any)
-  case class GetFromCache(key: String)
-  case class Cached(key: String, value: Option[Any])
-  case class Evict(key: String)
+  final case class PutInCache(key: String, value: Any)
+  final case class GetFromCache(key: String)
+  final case class Cached(key: String, value: Option[Any])
+  final case class Evict(key: String)
 }
 
 class ReplicatedCache() extends Actor {
