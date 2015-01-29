@@ -74,10 +74,10 @@ class DataBot extends Actor with ActorLogging {
 ```
     
 The full source code for this sample is in 
-[DataBot.scala](https://github.com/patriknw/akka-data-replication/blob/v0.8/src/test/scala/akka/contrib/datareplication/sample/DataBot.scala).   
+[DataBot.scala](https://github.com/patriknw/akka-data-replication/blob/v0.9/src/test/scala/akka/contrib/datareplication/sample/DataBot.scala).   
 
 More detailed documentation can be found in the
-[ScalaDoc](http://dl.bintray.com/patriknw/maven/com/github/patriknw/akka-data-replication_2.11/0.8/akka-data-replication_2.11-0.8-javadoc.jar)
+[ScalaDoc](http://dl.bintray.com/patriknw/maven/com/github/patriknw/akka-data-replication_2.11/0.9/akka-data-replication_2.11-0.9-javadoc.jar)
 of `Replicator` and linked classes.
 
 Other examples:
@@ -90,14 +90,14 @@ Other examples:
 Dependency
 ----------
 
-Latest version of `akka-data-replication` is `0.8`. This version depends on Akka 2.3.6 and is
-cross-built against Scala 2.10.4 and 2.11.4.
+Latest version of `akka-data-replication` is `0.9`. This version depends on Akka 2.3.9 and is
+cross-built against Scala 2.10.4 and 2.11.5.
 
 Add the following lines to your `build.sbt` file:
 
     resolvers += "patriknw at bintray" at "http://dl.bintray.com/patriknw/maven"
 
-    libraryDependencies += "com.github.patriknw" %% "akka-data-replication" % "0.8"
+    libraryDependencies += "com.github.patriknw" %% "akka-data-replication" % "0.9"
 
 More Resources
 --------------
