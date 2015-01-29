@@ -2,7 +2,7 @@ import com.typesafe.sbt.SbtMultiJvm
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
 import generate.protobuf._
 
-val akkaVersion = "2.3.6"
+val akkaVersion = "2.3.9"
 
 val project = Project(
   id = "akka-data-replication",
@@ -12,8 +12,8 @@ val project = Project(
     name := "akka-data-replication",
     licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0")),
     version := "0.9-SNAPSHOT",
-    scalaVersion := "2.11.4",
-    crossScalaVersions := Seq("2.10.4", "2.11.4"),
+    scalaVersion := "2.11.5",
+    crossScalaVersions := Seq("2.10.4", "2.11.5"),
     // compile options
     scalacOptions in compile ++= Seq("-encoding", "UTF-8", "-target:jvm-1.6", "-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint"),
     javacOptions in compile ++= Seq("-encoding", "UTF-8", "-source", "1.6", "-target", "1.6", "-Xlint:unchecked", "-Xlint:deprecation"),
