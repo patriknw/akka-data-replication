@@ -32,11 +32,11 @@ object VotingService {
   case object OpenAck
   case object Close
   case object CloseAck
-  case class Vote(participant: String)
+  final case class Vote(participant: String)
   case object GetVotes
-  case class Votes(result: Map[String, Long], open: Boolean)
+  final case class Votes(result: Map[String, Long], open: Boolean)
 
-  private case class GetVotesReq(replyTo: ActorRef)
+  private final case class GetVotesReq(replyTo: ActorRef)
 }
 
 class VotingService extends Actor {

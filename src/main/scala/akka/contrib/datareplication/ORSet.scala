@@ -124,7 +124,7 @@ object ORSet {
  * Set. If the Set clock dominates the dot, that means the other Set has removed this
  * element already, and the item is not in the merged Set.
  */
-case class ORSet(
+final case class ORSet(
   private[akka] val elements: Map[Any, ORSet.Dot] = Map.empty,
   private[akka] val vclock: VectorClock = new VectorClock)
   extends ReplicatedData with ReplicatedDataSerialization with RemovedNodePruning {

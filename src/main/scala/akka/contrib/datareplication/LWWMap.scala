@@ -27,7 +27,7 @@ object LWWMap {
  * value is not important for concurrent updates occurring within the clock skew.
  *
  */
-case class LWWMap(
+final case class LWWMap(
   private[akka] val underlying: ORMap = ORMap.empty)
   extends ReplicatedData with ReplicatedDataSerialization with RemovedNodePruning {
   import LWWRegister.{ Clock, defaultClock }

@@ -29,7 +29,7 @@ object PNCounter {
  * counters. The value of the counter is the value of the P counter minus
  * the value of the N counter.
  */
-case class PNCounter(
+final case class PNCounter(
   private[akka] val increments: GCounter, private[akka] val decrements: GCounter)
   extends ReplicatedData with ReplicatedDataSerialization with RemovedNodePruning {
 

@@ -70,7 +70,7 @@ object LWWRegister {
  * use a timestamp value based on something else, for example an increasing version number
  * from a database record that is used for optimistic concurrency control.
  */
-case class LWWRegister(
+final case class LWWRegister(
   private[akka] val node: UniqueAddress,
   private[akka] val state: Any,
   val timestamp: Long)

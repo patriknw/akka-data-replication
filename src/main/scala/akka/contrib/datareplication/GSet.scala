@@ -23,7 +23,7 @@ object GSet {
  *
  * A G-Set doesn't accumulate any garbage apart from the elements themselves.
  */
-case class GSet(elements: Set[Any]) extends ReplicatedData with ReplicatedDataSerialization {
+final case class GSet(elements: Set[Any]) extends ReplicatedData with ReplicatedDataSerialization {
 
   type T = GSet
 

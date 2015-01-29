@@ -19,7 +19,7 @@ import akka.testkit.TestKit
 
 object LocalConcurrencySpec {
 
-  case class Add(s: String)
+  final case class Add(s: String)
 
   class Updater extends Actor with Stash {
     implicit val cluster = Cluster(context.system)

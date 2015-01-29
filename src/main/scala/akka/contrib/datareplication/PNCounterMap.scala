@@ -23,7 +23,7 @@ object PNCounterMap {
 /**
  * Map of named counters. Specialized [[ORMap]] with [[PNCounter]] values.
  */
-case class PNCounterMap(
+final case class PNCounterMap(
   private[akka] val underlying: ORMap = ORMap.empty)
   extends ReplicatedData with ReplicatedDataSerialization with RemovedNodePruning {
 

@@ -29,7 +29,7 @@ object GCounter {
  * resolved by taking the maximum count for each node (like a vector
  * clock merge). The value of the counter is the sum of all node counts.
  */
-case class GCounter(
+final case class GCounter(
   private[akka] val state: Map[UniqueAddress, Long] = Map.empty)
   extends ReplicatedData with ReplicatedDataSerialization with RemovedNodePruning {
 

@@ -12,14 +12,14 @@ import akka.cluster.UniqueAddress
  */
 private[akka] object PruningState {
   sealed trait PruningPhase
-  case class PruningInitialized(seen: Set[Address]) extends PruningPhase
+  final case class PruningInitialized(seen: Set[Address]) extends PruningPhase
   case object PruningPerformed extends PruningPhase
 }
 
 /**
  * INTERNAL API
  */
-private[akka] case class PruningState(owner: UniqueAddress, phase: PruningState.PruningPhase) {
+private[akka] final case class PruningState(owner: UniqueAddress, phase: PruningState.PruningPhase) {
   import PruningState._
 
   def merge(that: PruningState): PruningState =
