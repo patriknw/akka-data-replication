@@ -64,8 +64,8 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
 
         within(5.seconds) {
           awaitAssert {
-            replicator ! Internal.GetNodeCount
-            expectMsg(Internal.NodeCount(1))
+            replicator ! GetReplicaCount
+            expectMsg(ReplicaCount(1))
           }
         }
 
@@ -146,8 +146,8 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
     runOn(first, second) {
       within(10.seconds) {
         awaitAssert {
-          replicator ! Internal.GetNodeCount
-          expectMsg(Internal.NodeCount(2))
+          replicator ! GetReplicaCount
+          expectMsg(ReplicaCount(2))
         }
       }
     }
@@ -354,8 +354,8 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
     runOn(first, second, third) {
       within(10.seconds) {
         awaitAssert {
-          replicator ! Internal.GetNodeCount
-          expectMsg(Internal.NodeCount(3))
+          replicator ! GetReplicaCount
+          expectMsg(ReplicaCount(3))
         }
       }
     }
