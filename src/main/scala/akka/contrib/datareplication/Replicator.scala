@@ -254,7 +254,7 @@ object Replicator {
    * buffered until the read is completed and the `modify` function has been applied.
    */
   final case class Update[A <: ReplicatedData](key: String, readConsistency: ReadConsistency, writeConsistency: WriteConsistency,
-                                         request: Option[Any])(val modify: Option[A] => A)
+                                               request: Option[Any])(val modify: Option[A] => A)
     extends Command {
 
     /**
@@ -368,6 +368,22 @@ object Replicator {
   }
 
   /**
+   * Get current number of replicas, including the local replica.
+   * Will reply to sender with [[ReplicaCount]].
+   */
+  final case object GetReplicaCount
+
+  /**
+   * Java API: The [[GetReplicaCount]] instance
+   */
+  def replicaInstance = GetReplicaCount
+
+  /**
+   * @see [[GetReplicaCount]]
+   */
+  final case class ReplicaCount(n: Int)
+
+  /**
    * Marker trait for remote messages serialized by
    * [[akka.contrib.datareplication.protobuf.ReplicatorMessageSerializer]].
    */
@@ -474,9 +490,6 @@ object Replicator {
     }
     final case class Gossip(updatedData: Map[String, DataEnvelope], sendBack: Boolean) extends ReplicatorMessage
 
-    // Testing purpose
-    case object GetNodeCount
-    final case class NodeCount(n: Int)
   }
 }
 
@@ -739,7 +752,7 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
     case GetKeys                                    ⇒ receiveGetKeys()
     case Delete(key, consistency)                   ⇒ receiveDelete(key, consistency, sender())
     case RemovedNodePruningTick                     ⇒ receiveRemovedNodePruningTick()
-    case GetNodeCount                               ⇒ receiveGetNodeCount()
+    case GetReplicaCount                            ⇒ receiveGetReplicaCount()
   }
 
   def receiveGet(key: String, consistency: ReadConsistency, req: Option[Any], replyTo: ActorRef): Unit = {
@@ -1194,9 +1207,9 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
       case _ ⇒ data
     }
 
-  def receiveGetNodeCount(): Unit = {
+  def receiveGetReplicaCount(): Unit = {
     // selfAddress is not included in the set
-    sender() ! NodeCount(nodes.size + 1)
+    sender() ! ReplicaCount(nodes.size + 1)
   }
 
 }

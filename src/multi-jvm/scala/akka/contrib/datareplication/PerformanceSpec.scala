@@ -125,8 +125,8 @@ class PerformanceSpec extends MultiNodeSpec(PerformanceSpec) with STMultiNodeSpe
 
       within(10.seconds) {
         awaitAssert {
-          replicator ! Internal.GetNodeCount
-          expectMsg(Internal.NodeCount(roles.size))
+          replicator ! GetReplicaCount
+          expectMsg(ReplicaCount(roles.size))
         }
       }
 

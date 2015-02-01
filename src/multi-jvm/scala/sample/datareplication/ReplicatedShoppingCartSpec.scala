@@ -11,6 +11,8 @@ import akka.actor.Stash
 import akka.cluster.Cluster
 import akka.contrib.datareplication.DataReplication
 import akka.contrib.datareplication.LWWMap
+import akka.contrib.datareplication.Replicator.GetReplicaCount
+import akka.contrib.datareplication.Replicator.ReplicaCount
 import akka.contrib.datareplication.STMultiNodeSpec
 import akka.remote.testconductor.RoleName
 import akka.remote.testkit.MultiNodeConfig
@@ -138,11 +140,15 @@ class ReplicatedShoppingCartSpec extends MultiNodeSpec(ReplicatedShoppingCartSpe
   }
 
   "Demo of a replicated shopping cart" must {
-    "join cluster" in {
+    "join cluster" in within(10.seconds) {
       join(node1, node1)
       join(node2, node1)
       join(node3, node1)
 
+      awaitAssert {
+        DataReplication(system).replicator ! GetReplicaCount
+        expectMsg(ReplicaCount(roles.size))
+      }
       enterBarrier("after-1")
     }
 

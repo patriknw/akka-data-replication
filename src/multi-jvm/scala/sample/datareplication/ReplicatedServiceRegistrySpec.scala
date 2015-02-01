@@ -4,7 +4,6 @@
 package sample.datareplication
 
 import scala.concurrent.duration._
-
 import akka.actor.Actor
 import akka.actor.ActorLogging
 import akka.actor.ActorRef
@@ -17,6 +16,8 @@ import akka.cluster.ClusterEvent.LeaderChanged
 import akka.contrib.datareplication.DataReplication
 import akka.contrib.datareplication.GSet
 import akka.contrib.datareplication.ORSet
+import akka.contrib.datareplication.Replicator.GetReplicaCount
+import akka.contrib.datareplication.Replicator.ReplicaCount
 import akka.contrib.datareplication.STMultiNodeSpec
 import akka.remote.testconductor.RoleName
 import akka.remote.testkit.MultiNodeConfig
@@ -173,11 +174,15 @@ class ReplicatedServiceRegistrySpec extends MultiNodeSpec(ReplicatedServiceRegis
   }
 
   "Demo of a replicated service registry" must {
-    "join cluster" in {
+    "join cluster" in within(10.seconds) {
       join(node1, node1)
       join(node2, node1)
       join(node3, node1)
 
+      awaitAssert {
+        DataReplication(system).replicator ! GetReplicaCount
+        expectMsg(ReplicaCount(roles.size))
+      }
       enterBarrier("after-1")
     }
 

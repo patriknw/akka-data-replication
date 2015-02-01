@@ -88,8 +88,8 @@ class ReplicatorChaosSpec extends MultiNodeSpec(ReplicatorChaosSpec) with STMult
 
       within(10.seconds) {
         awaitAssert {
-          replicator ! Internal.GetNodeCount
-          expectMsg(Internal.NodeCount(5))
+          replicator ! GetReplicaCount
+          expectMsg(ReplicaCount(5))
         }
       }
 

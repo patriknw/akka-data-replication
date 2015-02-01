@@ -60,8 +60,8 @@ class ReplicatorPruningSpec extends MultiNodeSpec(ReplicatorPruningSpec) with ST
 
       within(5.seconds) {
         awaitAssert {
-          replicator ! Internal.GetNodeCount
-          expectMsg(Internal.NodeCount(3))
+          replicator ! GetReplicaCount
+          expectMsg(ReplicaCount(3))
         }
       }
 
@@ -109,8 +109,8 @@ class ReplicatorPruningSpec extends MultiNodeSpec(ReplicatorPruningSpec) with ST
       runOn(first, second) {
         within(15.seconds) {
           awaitAssert {
-            replicator ! Internal.GetNodeCount
-            expectMsg(Internal.NodeCount(2))
+            replicator ! GetReplicaCount
+            expectMsg(ReplicaCount(2))
           }
         }
       }

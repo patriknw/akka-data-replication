@@ -92,8 +92,8 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
 
         within(10.seconds) {
           awaitAssert {
-            replicator ! Internal.GetNodeCount
-            expectMsg(Internal.NodeCount(nodes.size))
+            replicator ! GetReplicaCount
+            expectMsg(ReplicaCount(nodes.size))
           }
         }
       }
