@@ -17,7 +17,7 @@ class GSetSpec extends WordSpec with Matchers {
   "A GSet" must {
 
     "be able to add user" in {
-      val c1 = GSet()
+      val c1 = GSet.empty[String]
 
       val c2 = c1 + user1
       val c3 = c2 + user2
@@ -33,7 +33,7 @@ class GSetSpec extends WordSpec with Matchers {
 
     "be able to have its user set correctly merged with another GSet with unique user sets" in {
       // set 1
-      val c11 = GSet()
+      val c11 = GSet.empty[String]
 
       val c12 = c11 + user1
       val c13 = c12 + user2
@@ -42,7 +42,7 @@ class GSetSpec extends WordSpec with Matchers {
       c13.value should contain(user2)
 
       // set 2
-      val c21 = GSet()
+      val c21 = GSet.empty[String]
 
       val c22 = c21 + user3
       val c23 = c22 + user4
@@ -66,7 +66,7 @@ class GSetSpec extends WordSpec with Matchers {
 
     "be able to have its user set correctly merged with another GSet with overlapping user sets" in {
       // set 1
-      val c10 = GSet()
+      val c10 = GSet.empty[String]
 
       val c11 = c10 + user1
       val c12 = c11 + user2
@@ -77,7 +77,7 @@ class GSetSpec extends WordSpec with Matchers {
       c13.value should contain(user3)
 
       // set 2
-      val c20 = GSet()
+      val c20 = GSet.empty[String]
 
       val c21 = c20 + user2
       val c22 = c21 + user3

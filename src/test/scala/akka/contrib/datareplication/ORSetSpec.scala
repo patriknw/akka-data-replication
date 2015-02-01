@@ -225,7 +225,7 @@ class ORSetSpec extends WordSpec with Matchers {
     }
 
     "verify mergeCommonKeys" in {
-      val commonKeys: Set[Any] = Set("K1", "K2")
+      val commonKeys: Set[String] = Set("K1", "K2")
       val thisDot1 = new VectorClock(TreeMap(nodeA -> 3, nodeD -> 7))
       val thisDot2 = new VectorClock(TreeMap(nodeB -> 5, nodeC -> 2))
       val thisVclock = new VectorClock(TreeMap(nodeA -> 3, nodeB -> 5, nodeC -> 2, nodeD -> 7))

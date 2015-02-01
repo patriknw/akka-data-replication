@@ -7,16 +7,17 @@ import akka.cluster.Cluster
 import akka.cluster.UniqueAddress
 
 object LWWMap {
-  val empty: LWWMap = new LWWMap
-  def apply(): LWWMap = empty
+  private val _empty: LWWMap[Any] = new LWWMap(ORMap.empty)
+  def empty[A]: LWWMap[A] = _empty.asInstanceOf[LWWMap[A]]
+  def apply(): LWWMap[Any] = _empty
   /**
    * Java API
    */
-  def create(): LWWMap = empty
+  def create[A](): LWWMap[A] = empty
 
   def unapply(value: Any): Option[Map[String, Any]] = value match {
-    case m: LWWMap ⇒ Some(m.entries)
-    case _         ⇒ None
+    case m: LWWMap[Any] @unchecked ⇒ Some(m.entries)
+    case _                         ⇒ None
   }
 }
 
@@ -27,24 +28,21 @@ object LWWMap {
  * value is not important for concurrent updates occurring within the clock skew.
  *
  */
-final case class LWWMap(
-  private[akka] val underlying: ORMap = ORMap.empty)
+final case class LWWMap[A](
+  private[akka] val underlying: ORMap[LWWRegister[A]])
   extends ReplicatedData with ReplicatedDataSerialization with RemovedNodePruning {
   import LWWRegister.{ Clock, defaultClock }
 
-  type T = LWWMap
+  type T = LWWMap[A]
 
-  def entries: Map[String, Any] = underlying.entries.map { case (k, r: LWWRegister) ⇒ k -> r.value }
+  def entries: Map[String, A] = underlying.entries.map { case (k, r) ⇒ k -> r.value }
 
-  def get(key: String): Option[Any] = underlying.get(key) match {
-    case Some(r: LWWRegister) ⇒ Some(r.value)
-    case _                    ⇒ None
-  }
+  def get(key: String): Option[A] = underlying.get(key).map(_.value)
 
   /**
    * Adds an entry to the map
    */
-  def +(entry: (String, Any))(implicit node: Cluster): LWWMap = {
+  def +(entry: (String, A))(implicit node: Cluster): LWWMap[A] = {
     val (key, value) = entry
     put(node, key, value)
   }
@@ -52,22 +50,22 @@ final case class LWWMap(
   /**
    * Adds an entry to the map
    */
-  def put(node: Cluster, key: String, value: Any): LWWMap =
+  def put(node: Cluster, key: String, value: A): LWWMap[A] =
     put(node, key, value, defaultClock)
 
   /**
    * Adds an entry to the map
    */
-  def put(node: Cluster, key: String, value: Any, clock: Clock): LWWMap =
+  def put(node: Cluster, key: String, value: A, clock: Clock): LWWMap[A] =
     put(node.selfUniqueAddress, key, value, clock)
 
   /**
    * INTERNAL API
    */
-  private[akka] def put(node: UniqueAddress, key: String, value: Any, clock: Clock): LWWMap = {
+  private[akka] def put(node: UniqueAddress, key: String, value: A, clock: Clock): LWWMap[A] = {
     val newRegister = underlying.get(key) match {
-      case Some(r: LWWRegister) ⇒ r.withValue(node, value, clock)
-      case _                    ⇒ LWWRegister(node, value, clock)
+      case Some(r) ⇒ r.withValue(node, value, clock)
+      case None    ⇒ LWWRegister(node, value, clock)
     }
     copy(underlying.put(node, key, newRegister))
   }
@@ -77,26 +75,26 @@ final case class LWWMap(
    * Note that if there is a conflicting update on another node the entry will
    * not be removed after merge.
    */
-  def -(key: String)(implicit node: Cluster): LWWMap = remove(node, key)
+  def -(key: String)(implicit node: Cluster): LWWMap[A] = remove(node, key)
 
   /**
    * Removes an entry from the map.
    * Note that if there is a conflicting update on another node the entry will
    * not be removed after merge.
    */
-  def remove(node: Cluster, key: String): LWWMap =
+  def remove(node: Cluster, key: String): LWWMap[A] =
     copy(underlying.remove(node, key))
 
-  override def merge(that: LWWMap): LWWMap =
+  override def merge(that: LWWMap[A]): LWWMap[A] =
     copy(underlying.merge(that.underlying))
 
   override def needPruningFrom(removedNode: UniqueAddress): Boolean =
     underlying.needPruningFrom(removedNode)
 
-  override def prune(removedNode: UniqueAddress, collapseInto: UniqueAddress): LWWMap =
+  override def prune(removedNode: UniqueAddress, collapseInto: UniqueAddress): LWWMap[A] =
     copy(underlying.prune(removedNode, collapseInto))
 
-  override def pruningCleanup(removedNode: UniqueAddress): LWWMap =
+  override def pruningCleanup(removedNode: UniqueAddress): LWWMap[A] =
     copy(underlying.pruningCleanup(removedNode))
 }
 

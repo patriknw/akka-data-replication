@@ -39,32 +39,32 @@ class ReplicatedDataSerializer(val system: ExtendedActorSystem) extends Serializ
   override def identifier = 99902
 
   private val fromBinaryMap = collection.immutable.HashMap[Class[_ <: ReplicatedData], Array[Byte] ⇒ AnyRef](
-    classOf[GSet] -> gsetFromBinary,
-    classOf[ORSet] -> orsetFromBinary,
+    classOf[GSet[_]] -> gsetFromBinary,
+    classOf[ORSet[_]] -> orsetFromBinary,
     classOf[Flag] -> flagFromBinary,
-    classOf[LWWRegister] -> lwwRegisterFromBinary,
+    classOf[LWWRegister[_]] -> lwwRegisterFromBinary,
     classOf[GCounter] -> gcounterFromBinary,
     classOf[PNCounter] -> pncounterFromBinary,
-    classOf[ORMap] -> ormapFromBinary,
-    classOf[LWWMap] -> lwwmapFromBinary,
+    classOf[ORMap[_]] -> ormapFromBinary,
+    classOf[LWWMap[_]] -> lwwmapFromBinary,
     classOf[PNCounterMap] -> pncountermapFromBinary,
-    classOf[ORMultiMap] -> multimapFromBinary,
+    classOf[ORMultiMap[_]] -> multimapFromBinary,
     DeletedData.getClass -> (_ ⇒ DeletedData),
     classOf[VectorClock] -> vectorClockFromBinary)
 
   def toBinary(obj: AnyRef): Array[Byte] = obj match {
-    case m: ORSet        ⇒ compress(orsetToProto(m))
-    case m: GSet         ⇒ gsetToProto(m).toByteArray
-    case m: GCounter     ⇒ gcounterToProto(m).toByteArray
-    case m: PNCounter    ⇒ pncounterToProto(m).toByteArray
-    case m: Flag         ⇒ flagToProto(m).toByteArray
-    case m: LWWRegister  ⇒ lwwRegisterToProto(m).toByteArray
-    case m: ORMap        ⇒ compress(ormapToProto(m))
-    case m: LWWMap       ⇒ compress(lwwmapToProto(m))
-    case m: PNCounterMap ⇒ compress(pncountermapToProto(m))
-    case m: ORMultiMap   ⇒ compress(multimapToProto(m))
-    case DeletedData     ⇒ dm.Empty.getDefaultInstance.toByteArray
-    case m: VectorClock  ⇒ vectorClockToProto(m).toByteArray
+    case m: ORSet[_]       ⇒ compress(orsetToProto(m))
+    case m: GSet[_]        ⇒ gsetToProto(m).toByteArray
+    case m: GCounter       ⇒ gcounterToProto(m).toByteArray
+    case m: PNCounter      ⇒ pncounterToProto(m).toByteArray
+    case m: Flag           ⇒ flagToProto(m).toByteArray
+    case m: LWWRegister[_] ⇒ lwwRegisterToProto(m).toByteArray
+    case m: ORMap[_]       ⇒ compress(ormapToProto(m))
+    case m: LWWMap[_]      ⇒ compress(lwwmapToProto(m))
+    case m: PNCounterMap   ⇒ compress(pncountermapToProto(m))
+    case m: ORMultiMap[_]  ⇒ compress(multimapToProto(m))
+    case DeletedData       ⇒ dm.Empty.getDefaultInstance.toByteArray
+    case m: VectorClock    ⇒ vectorClockToProto(m).toByteArray
     case _ ⇒
       throw new IllegalArgumentException(s"Can't serialize object of type ${obj.getClass}")
   }
@@ -79,7 +79,7 @@ class ReplicatedDataSerializer(val system: ExtendedActorSystem) extends Serializ
       "Need a message class to be able to deserialize bytes in ReplicatedDataSerializer")
   }
 
-  def gsetToProto(gset: GSet): rd.GSet = {
+  def gsetToProto(gset: GSet[_]): rd.GSet = {
     val b = rd.GSet.newBuilder()
     // using java collections and sorting for performance (avoid conversions)
     val stringElements = new ArrayList[String]
@@ -111,10 +111,10 @@ class ReplicatedDataSerializer(val system: ExtendedActorSystem) extends Serializ
     b.build()
   }
 
-  def gsetFromBinary(bytes: Array[Byte]): GSet =
+  def gsetFromBinary(bytes: Array[Byte]): GSet[_] =
     gsetFromProto(rd.GSet.parseFrom(bytes))
 
-  def gsetFromProto(gset: rd.GSet): GSet =
+  def gsetFromProto(gset: rd.GSet): GSet[Any] =
     GSet(gset.getStringElementsList.iterator.asScala.toSet ++
       gset.getIntElementsList.iterator.asScala ++
       gset.getLongElementsList.iterator.asScala ++
@@ -140,7 +140,7 @@ class ReplicatedDataSerializer(val system: ExtendedActorSystem) extends Serializ
       OtherMessageComparator.compare(a.getElement, b.getElement)
   }
 
-  def orsetToProto(orset: ORSet): rd.ORSet = {
+  def orsetToProto(orset: ORSet[_]): rd.ORSet = {
     val b = rd.ORSet.newBuilder().setVclock(vectorClockToProto(orset.vclock))
     // using java collections and sorting for performance (avoid conversions)
     val stringElements = new ArrayList[rd.ORSet.StringEntry]
@@ -177,10 +177,10 @@ class ReplicatedDataSerializer(val system: ExtendedActorSystem) extends Serializ
     b.build()
   }
 
-  def orsetFromBinary(bytes: Array[Byte]): ORSet =
+  def orsetFromBinary(bytes: Array[Byte]): ORSet[Any] =
     orsetFromProto(rd.ORSet.parseFrom(decompress(bytes)))
 
-  def orsetFromProto(orset: rd.ORSet): ORSet = {
+  def orsetFromProto(orset: rd.ORSet): ORSet[Any] = {
     val entries =
       orset.getStringElementsList.iterator.asScala.map(e ⇒ e.getElement -> vectorClockFromProto(e.getDot)) ++
         orset.getIntElementsList.iterator.asScala.map(e ⇒ e.getElement -> vectorClockFromProto(e.getDot)) ++
@@ -199,17 +199,17 @@ class ReplicatedDataSerializer(val system: ExtendedActorSystem) extends Serializ
   def flagFromProto(flag: rd.Flag): Flag =
     Flag(flag.getEnabled)
 
-  def lwwRegisterToProto(lwwRegister: LWWRegister): rd.LWWRegister =
+  def lwwRegisterToProto(lwwRegister: LWWRegister[_]): rd.LWWRegister =
     rd.LWWRegister.newBuilder().
       setTimestamp(lwwRegister.timestamp).
       setNode(uniqueAddressToProto(lwwRegister.node)).
       setState(otherMessageToProto(lwwRegister.value)).
       build()
 
-  def lwwRegisterFromBinary(bytes: Array[Byte]): LWWRegister =
+  def lwwRegisterFromBinary(bytes: Array[Byte]): LWWRegister[Any] =
     lwwRegisterFromProto(rd.LWWRegister.parseFrom(bytes))
 
-  def lwwRegisterFromProto(lwwRegister: rd.LWWRegister): LWWRegister =
+  def lwwRegisterFromProto(lwwRegister: rd.LWWRegister): LWWRegister[Any] =
     LWWRegister(
       uniqueAddressFromProto(lwwRegister.getNode),
       otherMessageFromProto(lwwRegister.getState),
@@ -264,7 +264,7 @@ class ReplicatedDataSerializer(val system: ExtendedActorSystem) extends Serializ
       uniqueAddressFromProto(entry.getNode) -> entry.getClock)(breakOut))
   }
 
-  def ormapToProto(ormap: ORMap): rd.ORMap = {
+  def ormapToProto(ormap: ORMap[_]): rd.ORMap = {
     val b = rd.ORMap.newBuilder().setKeys(orsetToProto(ormap.keys))
     ormap.entries.toVector.sortBy { case (key, _) ⇒ key }.foreach {
       case (key, value) ⇒ b.addEntries(rd.ORMap.Entry.newBuilder().
@@ -273,34 +273,34 @@ class ReplicatedDataSerializer(val system: ExtendedActorSystem) extends Serializ
     b.build()
   }
 
-  def ormapFromBinary(bytes: Array[Byte]): ORMap =
+  def ormapFromBinary(bytes: Array[Byte]): ORMap[ReplicatedData] =
     ormapFromProto(rd.ORMap.parseFrom(decompress(bytes)))
 
-  def ormapFromProto(ormap: rd.ORMap): ORMap = {
+  def ormapFromProto(ormap: rd.ORMap): ORMap[ReplicatedData] = {
     val entries = ormap.getEntriesList.asScala.map(entry ⇒
       entry.getKey -> otherMessageFromProto(entry.getValue).asInstanceOf[ReplicatedData]).toMap
     ORMap(
-      keys = orsetFromProto(ormap.getKeys),
+      keys = orsetFromProto(ormap.getKeys).asInstanceOf[ORSet[String]],
       entries)
   }
 
-  def lwwmapToProto(lwwmap: LWWMap): rd.LWWMap = {
+  def lwwmapToProto(lwwmap: LWWMap[_]): rd.LWWMap = {
     val b = rd.LWWMap.newBuilder().setKeys(orsetToProto(lwwmap.underlying.keys))
     lwwmap.underlying.entries.toVector.sortBy { case (key, _) ⇒ key }.foreach {
-      case (key, value: LWWRegister) ⇒ b.addEntries(rd.LWWMap.Entry.newBuilder().
+      case (key, value) ⇒ b.addEntries(rd.LWWMap.Entry.newBuilder().
         setKey(key).setValue(lwwRegisterToProto(value)))
     }
     b.build()
   }
 
-  def lwwmapFromBinary(bytes: Array[Byte]): LWWMap =
+  def lwwmapFromBinary(bytes: Array[Byte]): LWWMap[Any] =
     lwwmapFromProto(rd.LWWMap.parseFrom(decompress(bytes)))
 
-  def lwwmapFromProto(lwwmap: rd.LWWMap): LWWMap = {
+  def lwwmapFromProto(lwwmap: rd.LWWMap): LWWMap[Any] = {
     val entries = lwwmap.getEntriesList.asScala.map(entry ⇒
       entry.getKey -> lwwRegisterFromProto(entry.getValue)).toMap
     LWWMap(ORMap(
-      keys = orsetFromProto(lwwmap.getKeys),
+      keys = orsetFromProto(lwwmap.getKeys).asInstanceOf[ORSet[String]],
       entries))
   }
 
@@ -320,27 +320,27 @@ class ReplicatedDataSerializer(val system: ExtendedActorSystem) extends Serializ
     val entries = pncountermap.getEntriesList.asScala.map(entry ⇒
       entry.getKey -> pncounterFromProto(entry.getValue)).toMap
     PNCounterMap(ORMap(
-      keys = orsetFromProto(pncountermap.getKeys),
+      keys = orsetFromProto(pncountermap.getKeys).asInstanceOf[ORSet[String]],
       entries))
   }
 
-  def multimapToProto(multimap: ORMultiMap): rd.ORMultiMap = {
+  def multimapToProto(multimap: ORMultiMap[_]): rd.ORMultiMap = {
     val b = rd.ORMultiMap.newBuilder().setKeys(orsetToProto(multimap.underlying.keys))
     multimap.underlying.entries.toVector.sortBy { case (key, _) ⇒ key }.foreach {
-      case (key, value: ORSet) ⇒ b.addEntries(rd.ORMultiMap.Entry.newBuilder().
+      case (key, value) ⇒ b.addEntries(rd.ORMultiMap.Entry.newBuilder().
         setKey(key).setValue(orsetToProto(value)))
     }
     b.build()
   }
 
-  def multimapFromBinary(bytes: Array[Byte]): ORMultiMap =
+  def multimapFromBinary(bytes: Array[Byte]): ORMultiMap[Any] =
     multimapFromProto(rd.ORMultiMap.parseFrom(decompress(bytes)))
 
-  def multimapFromProto(multimap: rd.ORMultiMap): ORMultiMap = {
+  def multimapFromProto(multimap: rd.ORMultiMap): ORMultiMap[Any] = {
     val entries = multimap.getEntriesList.asScala.map(entry ⇒
       entry.getKey -> orsetFromProto(entry.getValue)).toMap
     ORMultiMap(ORMap(
-      keys = orsetFromProto(multimap.getKeys),
+      keys = orsetFromProto(multimap.getKeys).asInstanceOf[ORSet[String]],
       entries))
   }
 

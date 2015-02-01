@@ -28,7 +28,7 @@ object LocalConcurrencySpec {
 
     def receive = {
       case s: String =>
-        val update = Replicator.Update(key, ORSet.empty, Replicator.WriteLocal)(_ + s)
+        val update = Replicator.Update(key, ORSet.empty[String], Replicator.WriteLocal)(_ + s)
         replicator ! update
     }
   }

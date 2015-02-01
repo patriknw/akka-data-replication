@@ -93,20 +93,20 @@ class ORMapSpec extends WordSpec with Matchers {
     }
 
     "illustrate the danger of using remove+put to replace an entry" in {
-      val m1 = ORMap().put(node1, "a", GSet() + "A").put(node1, "b", GSet() + "B")
-      val m2 = ORMap().put(node2, "c", GSet() + "C")
+      val m1 = ORMap.empty.put(node1, "a", GSet.empty + "A").put(node1, "b", GSet.empty + "B")
+      val m2 = ORMap.empty.put(node2, "c", GSet.empty + "C")
 
       val merged1 = m1 merge m2
 
-      val m3 = merged1.remove(node1, "b").put(node1, "b", GSet() + "B2")
+      val m3 = merged1.remove(node1, "b").put(node1, "b", GSet.empty + "B2")
       // same thing if only put is used
       // val m3 = merged1.put(node1, "b", GSet() + "B2")
       val merged2 = merged1 merge m3
 
-      merged2.entries("a").asInstanceOf[GSet].value should be(Set("A"))
+      merged2.entries("a").value should be(Set("A"))
       // note that B is included, because GSet("B") is merged with GSet("B2")
-      merged2.entries("b").asInstanceOf[GSet].value should be(Set("B", "B2"))
-      merged2.entries("c").asInstanceOf[GSet].value should be(Set("C"))
+      merged2.entries("b").value should be(Set("B", "B2"))
+      merged2.entries("c").value should be(Set("C"))
     }
 
     "not allow put for ORSet value type" in {
@@ -118,73 +118,73 @@ class ORMapSpec extends WordSpec with Matchers {
     }
 
     "be able to update entry" in {
-      val m1 = ORMap().put(node1, "a", ORSet().add(node1, "A"))
-        .put(node1, "b", ORSet().add(node1, "B01").add(node1, "B02").add(node1, "B03"))
-      val m2 = ORMap().put(node2, "c", ORSet().add(node2, "C"))
+      val m1 = ORMap.empty[ORSet[String]].put(node1, "a", ORSet.empty.add(node1, "A"))
+        .put(node1, "b", ORSet.empty.add(node1, "B01").add(node1, "B02").add(node1, "B03"))
+      val m2 = ORMap.empty[ORSet[String]].put(node2, "c", ORSet.empty.add(node2, "C"))
 
-      val merged1 = m1 merge m2
+      val merged1: ORMap[ORSet[String]] = m1 merge m2
 
-      val m3 = merged1.updated(node1, "b", ORSet())(_.clear(node1).add(node1, "B2"))
+      val m3 = merged1.updated(node1, "b", ORSet.empty[String])(_.clear(node1).add(node1, "B2"))
 
       val merged2 = merged1 merge m3
-      merged2.entries("a").asInstanceOf[ORSet].value should be(Set("A"))
-      merged2.entries("b").asInstanceOf[ORSet].value should be(Set("B2"))
-      merged2.entries("c").asInstanceOf[ORSet].value should be(Set("C"))
+      merged2.entries("a").value should be(Set("A"))
+      merged2.entries("b").value should be(Set("B2"))
+      merged2.entries("c").value should be(Set("C"))
 
-      val m4 = merged1.updated(node2, "b", ORSet())(_.add(node2, "B3"))
+      val m4 = merged1.updated(node2, "b", ORSet.empty[String])(_.add(node2, "B3"))
       val merged3 = m3 merge m4
-      merged3.entries("a").asInstanceOf[ORSet].value should be(Set("A"))
-      merged3.entries("b").asInstanceOf[ORSet].value should be(Set("B2", "B3"))
-      merged3.entries("c").asInstanceOf[ORSet].value should be(Set("C"))
+      merged3.entries("a").value should be(Set("A"))
+      merged3.entries("b").value should be(Set("B2", "B3"))
+      merged3.entries("c").value should be(Set("C"))
     }
 
     "be able to update ORSet entry with remove+put" in {
-      val m1 = ORMap().put(node1, "a", ORSet().add(node1, "A01"))
-        .updated(node1, "a", ORSet())(_.add(node1, "A02"))
-        .updated(node1, "a", ORSet())(_.add(node1, "A03"))
-        .put(node1, "b", ORSet().add(node1, "B01").add(node1, "B02").add(node1, "B03"))
-      val m2 = ORMap().put(node2, "c", ORSet().add(node2, "C"))
+      val m1 = ORMap.empty[ORSet[String]].put(node1, "a", ORSet.empty.add(node1, "A01"))
+        .updated(node1, "a", ORSet.empty[String])(_.add(node1, "A02"))
+        .updated(node1, "a", ORSet.empty[String])(_.add(node1, "A03"))
+        .put(node1, "b", ORSet.empty.add(node1, "B01").add(node1, "B02").add(node1, "B03"))
+      val m2 = ORMap.empty[ORSet[String]].put(node2, "c", ORSet.empty.add(node2, "C"))
 
       val merged1 = m1 merge m2
 
       // note that remove + put work because the new VectorClock version is incremented
       // from a global counter
-      val m3 = merged1.remove(node1, "b").put(node1, "b", ORSet().add(node1, "B2"))
+      val m3 = merged1.remove(node1, "b").put(node1, "b", ORSet.empty.add(node1, "B2"))
 
       val merged2 = merged1 merge m3
-      merged2.entries("a").asInstanceOf[ORSet].value should be(Set("A01", "A02", "A03"))
-      merged2.entries("b").asInstanceOf[ORSet].value should be(Set("B2"))
-      merged2.entries("c").asInstanceOf[ORSet].value should be(Set("C"))
+      merged2.entries("a").value should be(Set("A01", "A02", "A03"))
+      merged2.entries("b").value should be(Set("B2"))
+      merged2.entries("c").value should be(Set("C"))
 
-      val m4 = merged1.updated(node2, "b", ORSet())(_.add(node2, "B3"))
+      val m4 = merged1.updated(node2, "b", ORSet.empty[String])(_.add(node2, "B3"))
       val merged3 = m3 merge m4
-      merged3.entries("a").asInstanceOf[ORSet].value should be(Set("A01", "A02", "A03"))
-      merged3.entries("b").asInstanceOf[ORSet].value should be(Set("B2", "B3"))
-      merged3.entries("c").asInstanceOf[ORSet].value should be(Set("C"))
+      merged3.entries("a").value should be(Set("A01", "A02", "A03"))
+      merged3.entries("b").value should be(Set("B2", "B3"))
+      merged3.entries("c").value should be(Set("C"))
     }
 
     "be able to update ORSet entry with remove -> merge -> put" in {
-      val m1 = ORMap().put(node1, "a", ORSet().add(node1, "A"))
-        .put(node1, "b", ORSet().add(node1, "B01").add(node1, "B02").add(node1, "B03"))
-      val m2 = ORMap().put(node2, "c", ORSet().add(node2, "C"))
+      val m1 = ORMap.empty.put(node1, "a", ORSet.empty.add(node1, "A"))
+        .put(node1, "b", ORSet.empty.add(node1, "B01").add(node1, "B02").add(node1, "B03"))
+      val m2 = ORMap.empty.put(node2, "c", ORSet.empty.add(node2, "C"))
 
       val merged1 = m1 merge m2
 
       val m3 = merged1.remove(node1, "b")
 
       val merged2 = merged1 merge m3
-      merged2.entries("a").asInstanceOf[ORSet].value should be(Set("A"))
+      merged2.entries("a").value should be(Set("A"))
       merged2.contains("b") should be(false)
-      merged2.entries("c").asInstanceOf[ORSet].value should be(Set("C"))
+      merged2.entries("c").value should be(Set("C"))
 
-      val m4 = merged2.put(node1, "b", ORSet().add(node1, "B2"))
-      val m5 = merged2.updated(node2, "c", ORSet())(_.add(node2, "C2"))
-        .put(node2, "b", ORSet().add(node2, "B3"))
+      val m4 = merged2.put(node1, "b", ORSet.empty.add(node1, "B2"))
+      val m5 = merged2.updated(node2, "c", ORSet.empty[String])(_.add(node2, "C2"))
+        .put(node2, "b", ORSet.empty.add(node2, "B3"))
 
       val merged3 = m5 merge m4
-      merged3.entries("a").asInstanceOf[ORSet].value should be(Set("A"))
-      merged3.entries("b").asInstanceOf[ORSet].value should be(Set("B2", "B3"))
-      merged3.entries("c").asInstanceOf[ORSet].value should be(Set("C", "C2"))
+      merged3.entries("a").value should be(Set("A"))
+      merged3.entries("b").value should be(Set("B2", "B3"))
+      merged3.entries("c").value should be(Set("C", "C2"))
 
     }
 

@@ -474,9 +474,9 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
     enterBarrier("a-b-added-to-G")
     runOn(second) {
       replicator ! Get("G", readAll)
-      expectMsgPF() { case GetSuccess("G", c: ORSet, _) ⇒ c.value } should be(Set("a", "b"))
+      expectMsgPF() { case GetSuccess("G", ORSet(elements), _) ⇒ elements } should be(Set("a", "b"))
       replicator ! Get("G", ReadLocal)
-      expectMsgPF() { case GetSuccess("G", c: ORSet, _) ⇒ c.value } should be(Set("a", "b"))
+      expectMsgPF() { case GetSuccess("G", ORSet(elements), _) ⇒ elements } should be(Set("a", "b"))
     }
     enterBarrier("after-8")
   }

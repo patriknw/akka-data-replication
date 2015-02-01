@@ -108,8 +108,8 @@ class ReplicatedServiceRegistry() extends Actor with ActorLogging {
     case Lookup(key) =>
       sender() ! Bindings(key, services.getOrElse(key, Set.empty))
 
-    case Changed(KeysDataKey, data: GSet) =>
-      val newKeys = data.value.map(_.toString)
+    case Changed(KeysDataKey, data: GSet[String] @unchecked) =>
+      val newKeys = data.value
       log.debug("Services changed, added: {}, all: {}", (newKeys -- keys), newKeys)
       (newKeys -- keys).foreach { dKey =>
         // subscribe to get notifications of when services with this name are added or removed
@@ -117,9 +117,9 @@ class ReplicatedServiceRegistry() extends Actor with ActorLogging {
       }
       keys = newKeys
 
-    case Changed(dKey, data: ORSet) =>
+    case Changed(dKey, data: ORSet[ActorRef] @unchecked) =>
       val name = dKey.split(":").tail.mkString
-      val newServices = data.value.asInstanceOf[Set[ActorRef]]
+      val newServices = data.value
       log.debug("Services changed for name [{}]: {}", name, newServices)
       services = services.updated(name, newServices)
       context.system.eventStream.publish(BindingChanged(name, newServices))

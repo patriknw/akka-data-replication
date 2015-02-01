@@ -4,16 +4,17 @@
 package akka.contrib.datareplication
 
 object GSet {
-  val empty: GSet = new GSet(Set.empty)
-  def apply(): GSet = empty
+  private val _empty: GSet[Any] = new GSet(Set.empty)
+  def empty[A]: GSet[A] = _empty.asInstanceOf[GSet[A]]
+  def apply(): GSet[Any] = _empty
   /**
    * Java API
    */
-  def create(): GSet = empty
+  def create[A](): GSet[A] = empty[A]
 
   def unapply(value: Any): Option[Set[Any]] = value match {
-    case s: GSet ⇒ Some(s.value)
-    case _       ⇒ None
+    case s: GSet[Any] @unchecked ⇒ Some(s.value)
+    case _                       ⇒ None
   }
 }
 
@@ -23,35 +24,35 @@ object GSet {
  *
  * A G-Set doesn't accumulate any garbage apart from the elements themselves.
  */
-final case class GSet(elements: Set[Any]) extends ReplicatedData with ReplicatedDataSerialization {
+final case class GSet[A](elements: Set[A]) extends ReplicatedData with ReplicatedDataSerialization {
 
-  type T = GSet
+  type T = GSet[A]
 
   /**
    * Scala API
    */
-  def value: Set[Any] = elements
+  def value: Set[A] = elements
 
   /**
    * Java API
    */
-  def getValue(): java.util.Set[Any] = {
+  def getValue(): java.util.Set[A] = {
     import scala.collection.JavaConverters._
     value.asJava
   }
 
-  def contains(a: Any): Boolean = elements(a)
+  def contains(a: A): Boolean = elements(a)
 
   /**
    * Adds an element to the set
    */
-  def +(element: Any): GSet = add(element)
+  def +(element: A): GSet[A] = add(element)
 
   /**
    * Adds an element to the set
    */
-  def add(element: Any): GSet = copy(elements + element)
+  def add(element: A): GSet[A] = copy(elements + element)
 
-  override def merge(that: GSet): GSet = copy(elements ++ that.elements)
+  override def merge(that: GSet[A]): GSet[A] = copy(elements ++ that.elements)
 }
 
