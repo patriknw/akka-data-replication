@@ -84,6 +84,7 @@ Other examples:
 
 - [Replicated Cache](https://github.com/patriknw/akka-data-replication/blob/v0.9/src/multi-jvm/scala/sample/datareplication/ReplicatedCacheSpec.scala#L30)
 - [Replicated Metrics](https://github.com/patriknw/akka-data-replication/blob/v0.9/src/multi-jvm/scala/sample/datareplication/ReplicatedMetricsSpec.scala#L30)
+- [Replicated Service Registry](https://github.com/patriknw/akka-data-replication/blob/9e03df1452c370d7300f711a60f457bc96b8a823/src/multi-jvm/scala/sample/datareplication/ReplicatedServiceRegistrySpec.scala#L46)
 - [VotingService](https://github.com/patriknw/akka-data-replication/blob/v0.9/src/multi-jvm/scala/sample/datareplication/VotingContestSpec.scala#L30)
 - [ShoppingCart](https://github.com/patriknw/akka-data-replication/blob/v0.9/src/multi-jvm/scala/sample/datareplication/ReplicatedShoppingCartSpec.scala#L31)
 
