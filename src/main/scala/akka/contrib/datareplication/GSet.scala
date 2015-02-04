@@ -12,10 +12,7 @@ object GSet {
    */
   def create[A](): GSet[A] = empty[A]
 
-  def unapply(value: Any): Option[Set[Any]] = value match {
-    case s: GSet[Any] @unchecked ⇒ Some(s.value)
-    case _                       ⇒ None
-  }
+  // unapply from case class
 }
 
 /**
@@ -23,22 +20,20 @@ object GSet {
  * remove an element of a G-Set.
  *
  * A G-Set doesn't accumulate any garbage apart from the elements themselves.
+ *
+ * This class is immutable, i.e. "modifying" methods return a new instance.
  */
+@SerialVersionUID(1L)
 final case class GSet[A](elements: Set[A]) extends ReplicatedData with ReplicatedDataSerialization {
 
   type T = GSet[A]
 
   /**
-   * Scala API
-   */
-  def value: Set[A] = elements
-
-  /**
    * Java API
    */
-  def getValue(): java.util.Set[A] = {
+  def getElements(): java.util.Set[A] = {
     import scala.collection.JavaConverters._
-    value.asJava
+    elements.asJava
   }
 
   def contains(a: A): Boolean = elements(a)

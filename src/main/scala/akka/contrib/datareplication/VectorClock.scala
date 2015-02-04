@@ -17,7 +17,7 @@ import akka.cluster.UniqueAddress
  */
 object VectorClock {
 
-  val empty: VectorClock = new VectorClock
+  val empty: VectorClock = new VectorClock(TreeMap.empty[UniqueAddress, Long])
   def apply(): VectorClock = empty
   /**
    * Java API
@@ -76,10 +76,12 @@ object VectorClock {
  * }}}
  *
  * Based on code from `akka.cluster.VectorClock`.
+ *
+ * This class is immutable, i.e. "modifying" methods return a new instance.
  */
 @SerialVersionUID(1L)
-final case class VectorClock(
-  private[akka] val versions: TreeMap[UniqueAddress, Long] = TreeMap.empty[UniqueAddress, Long])
+final case class VectorClock private[akka] (
+  private[akka] val versions: TreeMap[UniqueAddress, Long])
   extends ReplicatedData with ReplicatedDataSerialization with RemovedNodePruning {
 
   type T = VectorClock

@@ -8,6 +8,7 @@ import org.scalatest.WordSpec
 import org.scalatest.Matchers
 import akka.actor.Address
 import akka.cluster.UniqueAddress
+import akka.contrib.datareplication.Replicator.Changed
 
 class LWWRegisterSpec extends WordSpec with Matchers {
   import LWWRegister.defaultClock
@@ -61,6 +62,17 @@ class LWWRegisterSpec extends WordSpec with Matchers {
           val r2 = r.withValue(node1, n, defaultClock)
           r2.timestamp should be > r.timestamp
           r2
+      }
+    }
+
+    "have unapply extractor" in {
+      val r1 = LWWRegister(node1, "a", defaultClock)
+      val LWWRegister(value1) = r1
+      val value2: String = value1
+      Changed("key", r1) match {
+        case Changed("key", LWWRegister(value3)) =>
+          val value4: Any = value3
+          value4 should be("a")
       }
     }
   }

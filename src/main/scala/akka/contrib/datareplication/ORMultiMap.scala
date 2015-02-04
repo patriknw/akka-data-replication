@@ -19,8 +19,16 @@ object ORMultiMap {
    */
   def create[A](): ORMultiMap[A] = empty[A]
 
+  /**
+   * Extract the [[ORMultiMap#elements]].
+   */
+  def unapply[A](m: ORMultiMap[A]): Option[Map[String, Set[A]]] = Some(m.entries)
+
+  /**
+   * Extract the [[ORMultiMap#elements]] of an `ORMultiMap`.
+   */
   def unapply(value: Any): Option[Map[String, Set[Any]]] = value match {
-    case r: ORMultiMap[Any] @unchecked ⇒ Some(r.entries)
+    case m: ORMultiMap[Any] @unchecked ⇒ Some(m.entries)
     case _                             ⇒ None
   }
 }
@@ -28,8 +36,11 @@ object ORMultiMap {
 /**
  * An immutable multi-map implementation. This class wraps an
  * [[ORMap]] with an [[ORSet]] for the map's value.
+ *
+ * This class is immutable, i.e. "modifying" methods return a new instance.
  */
-final case class ORMultiMap[A] private[akka] (private[akka] val underlying: ORMap[ORSet[A]])
+@SerialVersionUID(1L)
+final class ORMultiMap[A] private[akka] (private[akka] val underlying: ORMap[ORSet[A]])
   extends ReplicatedData with ReplicatedDataSerialization with RemovedNodePruning {
 
   override type T = ORMultiMap[A]
@@ -38,33 +49,39 @@ final case class ORMultiMap[A] private[akka] (private[akka] val underlying: ORMa
     new ORMultiMap(underlying.merge(that.underlying))
 
   /**
-   * @return The entries of a multimap where keys are strings and values are untyped sets.
+   * Scala API: All entries of a multimap where keys are strings and values are sets.
    */
   def entries: Map[String, Set[A]] =
-    underlying.entries.map { case (k, v) ⇒ k -> v.value }
+    underlying.entries.map { case (k, v) ⇒ k -> v.elements }
 
   /**
-   * Java API
+   * Java API: All entries of a multimap where keys are strings and values are sets.
    */
-  def getEntries(): java.util.Map[String, Set[A]] = {
+  def getEntries(): java.util.Map[String, java.util.Set[A]] = {
     import scala.collection.JavaConverters._
-    entries.asJava
+    val result = new java.util.HashMap[String, java.util.Set[A]]
+    underlying.entries.foreach {
+      case (k, v) ⇒ result.put(k, v.elements.asJava)
+    }
+    result
   }
 
   /**
    * Get the set associated with the key if there is one.
    */
   def get(key: String): Option[Set[A]] =
-    underlying.get(key).map(_.value)
+    underlying.get(key).map(_.elements)
 
   /**
-   * Get the set associated with the key if there is one, else return the given default.
+   * Scala API: Get the set associated with the key if there is one,
+   * else return the given default.
    */
   def getOrElse(key: String, default: ⇒ Set[A]): Set[A] =
     get(key).getOrElse(default)
 
   /**
    * Convenience for put. Requires an implicit Cluster.
+   * @see [[#put]]
    */
   def +(entry: (String, Set[A]))(implicit node: Cluster): ORMultiMap[A] = {
     val (key, value) = entry
@@ -85,11 +102,12 @@ final case class ORMultiMap[A] private[akka] (private[akka] val underlying: ORMa
     val newUnderlying = underlying.updated(node, key, ORSet.empty[A]) { existing =>
       value.foldLeft(existing.clear(node)) { (s, element) => s.add(node, element) }
     }
-    ORMultiMap(newUnderlying)
+    new ORMultiMap(newUnderlying)
   }
 
   /**
    * Convenience for remove. Requires an implicit Cluster.
+   * @see [[#remove]]
    */
   def -(key: String)(implicit node: Cluster): ORMultiMap[A] =
     remove(node, key)
@@ -104,7 +122,7 @@ final case class ORMultiMap[A] private[akka] (private[akka] val underlying: ORMa
    * INTERNAL API
    */
   private[akka] def remove(node: UniqueAddress, key: String): ORMultiMap[A] =
-    ORMultiMap(underlying.remove(node, key))
+    new ORMultiMap(underlying.remove(node, key))
 
   /**
    * Add an element to a set associated with a key. If there is no existing set then one will be initialised.
@@ -117,7 +135,7 @@ final case class ORMultiMap[A] private[akka] (private[akka] val underlying: ORMa
    */
   private[akka] def addBinding(node: UniqueAddress, key: String, element: A): ORMultiMap[A] = {
     val newUnderlying = underlying.updated(node, key, ORSet.empty[A])(_.add(node, element))
-    ORMultiMap(newUnderlying)
+    new ORMultiMap(newUnderlying)
   }
 
   /**
@@ -138,7 +156,7 @@ final case class ORMultiMap[A] private[akka] (private[akka] val underlying: ORMa
         case _                    => u
       }
     }
-    ORMultiMap(newUnderlying)
+    new ORMultiMap(newUnderlying)
   }
 
   /**
@@ -166,4 +184,15 @@ final case class ORMultiMap[A] private[akka] (private[akka] val underlying: ORMa
 
   override def prune(removedNode: UniqueAddress, collapseInto: UniqueAddress): T =
     new ORMultiMap(underlying.prune(removedNode, collapseInto))
+
+  // this class cannot be a `case class` because we need different `unapply`
+
+  override def toString: String = s"ORMulti$entries"
+
+  override def equals(o: Any): Boolean = o match {
+    case other: ORMultiMap[_] => underlying == other.underlying
+    case _                    => false
+  }
+
+  override def hashCode: Int = underlying.hashCode
 }

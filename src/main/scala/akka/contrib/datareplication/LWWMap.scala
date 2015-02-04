@@ -15,10 +15,10 @@ object LWWMap {
    */
   def create[A](): LWWMap[A] = empty
 
-  def unapply(value: Any): Option[Map[String, Any]] = value match {
-    case m: LWWMap[Any] @unchecked ⇒ Some(m.entries)
-    case _                         ⇒ None
-  }
+  /**
+   * Extract the [[LWWMap#entries]].
+   */
+  def unapply[A](m: LWWMap[A]): Option[Map[String, A]] = Some(m.entries)
 }
 
 /**
@@ -27,8 +27,14 @@ object LWWMap {
  * `LWWRegister` relies on synchronized clocks and should only be used when the choice of
  * value is not important for concurrent updates occurring within the clock skew.
  *
+ * Instead of using timestamps based on ´System.currentTimeMillis()` time it is possible to
+ * use a timestamp value based on something else, for example an increasing version number
+ * from a database record that is used for optimistic concurrency control.
+ *
+ * This class is immutable, i.e. "modifying" methods return a new instance.
  */
-final case class LWWMap[A](
+@SerialVersionUID(1L)
+final class LWWMap[A] private[akka] (
   private[akka] val underlying: ORMap[LWWRegister[A]])
   extends ReplicatedData with ReplicatedDataSerialization with RemovedNodePruning {
   import LWWRegister.{ Clock, defaultClock }
@@ -54,7 +60,12 @@ final case class LWWMap[A](
     put(node, key, value, defaultClock)
 
   /**
-   * Adds an entry to the map
+   * Adds an entry to the map.
+   *
+   * You can provide your `clock` implementation instead of using timestamps based
+   * on ´System.currentTimeMillis()` time. The timestamp can for example be an
+   * increasing version number from a database record that is used for optimistic
+   * concurrency control.
    */
   def put(node: Cluster, key: String, value: A, clock: Clock): LWWMap[A] =
     put(node.selfUniqueAddress, key, value, clock)
@@ -67,7 +78,7 @@ final case class LWWMap[A](
       case Some(r) ⇒ r.withValue(node, value, clock)
       case None    ⇒ LWWRegister(node, value, clock)
     }
-    copy(underlying.put(node, key, newRegister))
+    new LWWMap(underlying.put(node, key, newRegister))
   }
 
   /**
@@ -83,18 +94,35 @@ final case class LWWMap[A](
    * not be removed after merge.
    */
   def remove(node: Cluster, key: String): LWWMap[A] =
-    copy(underlying.remove(node, key))
+    remove(node.selfUniqueAddress, key)
+
+  /**
+   * INTERNAL API
+   */
+  private[akka] def remove(node: UniqueAddress, key: String): LWWMap[A] =
+    new LWWMap(underlying.remove(node, key))
 
   override def merge(that: LWWMap[A]): LWWMap[A] =
-    copy(underlying.merge(that.underlying))
+    new LWWMap(underlying.merge(that.underlying))
 
   override def needPruningFrom(removedNode: UniqueAddress): Boolean =
     underlying.needPruningFrom(removedNode)
 
   override def prune(removedNode: UniqueAddress, collapseInto: UniqueAddress): LWWMap[A] =
-    copy(underlying.prune(removedNode, collapseInto))
+    new LWWMap(underlying.prune(removedNode, collapseInto))
 
   override def pruningCleanup(removedNode: UniqueAddress): LWWMap[A] =
-    copy(underlying.pruningCleanup(removedNode))
+    new LWWMap(underlying.pruningCleanup(removedNode))
+
+  // this class cannot be a `case class` because we need different `unapply`
+
+  override def toString: String = s"LWW$entries" //e.g. LWWMap(a -> 1, b -> 2)
+
+  override def equals(o: Any): Boolean = o match {
+    case other: LWWMap[_] => underlying == other.underlying
+    case _                => false
+  }
+
+  override def hashCode: Int = underlying.hashCode
 }
 

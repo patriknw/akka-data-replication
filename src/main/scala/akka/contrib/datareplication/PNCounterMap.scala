@@ -14,16 +14,19 @@ object PNCounterMap {
    */
   def create(): PNCounterMap = empty
 
-  def unapply(value: Any): Option[Map[String, Long]] = value match {
-    case m: PNCounterMap ⇒ Some(m.entries)
-    case _               ⇒ None
-  }
+  /**
+   * Extract the [[PNCounterMap#entries]].
+   */
+  def unapply(m: PNCounterMap): Option[Map[String, Long]] = Some(m.entries)
 }
 
 /**
  * Map of named counters. Specialized [[ORMap]] with [[PNCounter]] values.
+ *
+ * This class is immutable, i.e. "modifying" methods return a new instance.
  */
-final case class PNCounterMap(
+@SerialVersionUID(1L)
+final class PNCounterMap private[akka] (
   private[akka] val underlying: ORMap[PNCounter])
   extends ReplicatedData with ReplicatedDataSerialization with RemovedNodePruning {
 
@@ -51,7 +54,7 @@ final case class PNCounterMap(
    * INTERNAL API
    */
   private[akka] def increment(node: UniqueAddress, key: String, delta: Long): PNCounterMap =
-    copy(underlying.updated(node, key, PNCounter())(_.increment(node, delta)))
+    new PNCounterMap(underlying.updated(node, key, PNCounter())(_.increment(node, delta)))
 
   /**
    * Decrement the counter with the delta specified.
@@ -71,7 +74,7 @@ final case class PNCounterMap(
    * INTERNAL API
    */
   private[akka] def decrement(node: UniqueAddress, key: String, delta: Long): PNCounterMap = {
-    copy(underlying.updated(node, key, PNCounter())(_.decrement(node, delta)))
+    new PNCounterMap(underlying.updated(node, key, PNCounter())(_.decrement(node, delta)))
   }
 
   /**
@@ -93,18 +96,29 @@ final case class PNCounterMap(
    * INTERNAL API
    */
   private[akka] def remove(node: UniqueAddress, key: String): PNCounterMap =
-    copy(underlying.remove(node, key))
+    new PNCounterMap(underlying.remove(node, key))
 
   override def merge(that: PNCounterMap): PNCounterMap =
-    copy(underlying.merge(that.underlying))
+    new PNCounterMap(underlying.merge(that.underlying))
 
   override def needPruningFrom(removedNode: UniqueAddress): Boolean =
     underlying.needPruningFrom(removedNode)
 
   override def prune(removedNode: UniqueAddress, collapseInto: UniqueAddress): PNCounterMap =
-    copy(underlying.prune(removedNode, collapseInto))
+    new PNCounterMap(underlying.prune(removedNode, collapseInto))
 
   override def pruningCleanup(removedNode: UniqueAddress): PNCounterMap =
-    copy(underlying.pruningCleanup(removedNode))
+    new PNCounterMap(underlying.pruningCleanup(removedNode))
+
+  // this class cannot be a `case class` because we need different `unapply`
+
+  override def toString: String = s"ORMulti$entries"
+
+  override def equals(o: Any): Boolean = o match {
+    case other: PNCounterMap => underlying == other.underlying
+    case _                   => false
+  }
+
+  override def hashCode: Int = underlying.hashCode
 }
 

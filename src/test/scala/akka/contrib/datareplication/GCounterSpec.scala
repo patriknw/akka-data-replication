@@ -8,6 +8,7 @@ import org.scalatest.WordSpec
 import org.scalatest.Matchers
 import akka.actor.Address
 import akka.cluster.UniqueAddress
+import akka.contrib.datareplication.Replicator.Changed
 
 class GCounterSpec extends WordSpec with Matchers {
   val node1 = UniqueAddress(Address("akka.tcp", "Sys", "localhost", 2551), 1)
@@ -148,6 +149,17 @@ class GCounterSpec extends WordSpec with Matchers {
 
       val c5 = (c4 increment node1).pruningCleanup(node1)
       c5.needPruningFrom(node1) should be(false)
+    }
+
+    "have unapply extractor" in {
+      val c1 = GCounter.empty.increment(node1).increment(node2)
+      val GCounter(value1) = c1
+      val value2: Long = value1
+      Changed("key", c1) match {
+        case Changed("key", GCounter(value3)) =>
+          val value4: Long = value3
+          value4 should be(2L)
+      }
     }
 
   }

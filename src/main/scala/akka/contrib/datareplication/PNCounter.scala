@@ -5,6 +5,7 @@ package akka.contrib.datareplication
 
 import akka.cluster.Cluster
 import akka.cluster.UniqueAddress
+import akka.util.HashCode
 
 object PNCounter {
   val empty: PNCounter = new PNCounter(GCounter.empty, GCounter.empty)
@@ -14,10 +15,10 @@ object PNCounter {
    */
   def create(): PNCounter = empty
 
-  def unapply(value: Any): Option[Long] = value match {
-    case c: PNCounter ⇒ Some(c.value)
-    case _            ⇒ None
-  }
+  /**
+   * Extract the [[GCounter#value]].
+   */
+  def unapply(c: PNCounter): Option[Long] = Some(c.value)
 }
 
 /**
@@ -28,13 +29,19 @@ object PNCounter {
  * as two internal [[GCounter]]s. Merge is handled by merging the internal P and N
  * counters. The value of the counter is the value of the P counter minus
  * the value of the N counter.
+ *
+ * This class is immutable, i.e. "modifying" methods return a new instance.
  */
-final case class PNCounter(
+@SerialVersionUID(1L)
+final class PNCounter private[akka] (
   private[akka] val increments: GCounter, private[akka] val decrements: GCounter)
   extends ReplicatedData with ReplicatedDataSerialization with RemovedNodePruning {
 
   type T = PNCounter
 
+  /**
+   * Current total value of the counter.
+   */
   def value: Long = increments.value - decrements.value
 
   /**
@@ -48,7 +55,7 @@ final case class PNCounter(
    * If the delta is negative then it will decrement instead of increment.
    */
   def increment(node: Cluster, delta: Long = 1): PNCounter =
-    change(node.selfUniqueAddress, delta)
+    increment(node.selfUniqueAddress, delta)
 
   /**
    * Decrement the counter with the delta specified.
@@ -61,11 +68,11 @@ final case class PNCounter(
    * If the delta is negative then it will increment instead of decrement.
    */
   def decrement(node: Cluster, delta: Long = 1): PNCounter =
-    change(node.selfUniqueAddress, -delta)
+    decrement(node.selfUniqueAddress, delta)
 
   private[akka] def increment(key: UniqueAddress, delta: Long): PNCounter = change(key, delta)
   private[akka] def increment(key: UniqueAddress): PNCounter = increment(key, 1)
-  private[akka] def decrement(key: UniqueAddress, delta: Long): PNCounter = change(key, -math.abs(delta))
+  private[akka] def decrement(key: UniqueAddress, delta: Long): PNCounter = change(key, -delta)
   private[akka] def decrement(key: UniqueAddress): PNCounter = decrement(key, 1)
 
   private[akka] def change(key: UniqueAddress, delta: Long): PNCounter =
@@ -87,5 +94,26 @@ final case class PNCounter(
   override def pruningCleanup(removedNode: UniqueAddress): PNCounter =
     copy(increments = increments.pruningCleanup(removedNode),
       decrements = decrements.pruningCleanup(removedNode))
+
+  private def copy(increments: GCounter = this.increments, decrements: GCounter = this.decrements): PNCounter =
+    new PNCounter(increments, decrements)
+
+  // this class cannot be a `case class` because we need different `unapply`
+
+  override def toString: String = s"PNCounter($value)"
+
+  override def equals(o: Any): Boolean = o match {
+    case other: PNCounter =>
+      increments == other.increments && decrements == other.decrements
+    case _ => false
+  }
+
+  override def hashCode: Int = {
+    var result = HashCode.SEED
+    result = HashCode.hash(result, increments)
+    result = HashCode.hash(result, decrements)
+    result
+  }
+
 }
 
