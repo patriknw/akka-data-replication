@@ -57,12 +57,12 @@ class ReplicatedCache() extends Actor {
 
   def receive = {
     case PutInCache(key, value) =>
-      replicator ! Update(dataKey(key), LWWMap.empty, WriteLocal)(_ + (key -> value))
+      replicator ! Update(dataKey(key), LWWMap(), WriteLocal)(_ + (key -> value))
     case Evict(key) =>
-      replicator ! Update(dataKey(key), LWWMap.empty, WriteLocal)(_ - key)
+      replicator ! Update(dataKey(key), LWWMap(), WriteLocal)(_ - key)
     case GetFromCache(key) =>
       replicator ! Get(dataKey(key), ReadLocal, Some(Request(key, sender())))
-    case GetSuccess(_, data: LWWMap, Some(Request(key, replyTo))) =>
+    case GetSuccess(_, data: LWWMap[Any] @unchecked, Some(Request(key, replyTo))) =>
       data.get(key) match {
         case Some(value) => replyTo ! Cached(key, Some(value))
         case None        => replyTo ! Cached(key, None)

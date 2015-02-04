@@ -31,27 +31,27 @@ object LWWRegister {
   /**
    * INTERNAL API
    */
-  private[akka] def apply(node: UniqueAddress, initialValue: Any, clock: Clock): LWWRegister =
+  private[akka] def apply[A](node: UniqueAddress, initialValue: A, clock: Clock): LWWRegister[A] =
     new LWWRegister(node, initialValue, clock.nextTimestamp(0L))
 
-  def apply(node: Cluster, initialValue: Any, clock: Clock = defaultClock): LWWRegister =
+  def apply[A](node: Cluster, initialValue: A, clock: Clock = defaultClock): LWWRegister[A] =
     apply(node.selfUniqueAddress, initialValue, clock)
 
   /**
    * Java API
    */
-  def create(node: Cluster, initialValue: Any): LWWRegister =
+  def create[A](node: Cluster, initialValue: A): LWWRegister[A] =
     apply(node, initialValue)
 
   /**
    * Java API
    */
-  def create(node: Cluster, initialValue: Any, clock: Clock): LWWRegister =
+  def create[A](node: Cluster, initialValue: A, clock: Clock): LWWRegister[A] =
     apply(node, initialValue, clock)
 
   def unapply(value: Any): Option[Any] = value match {
-    case r: LWWRegister ⇒ Some(r.value)
-    case _              ⇒ None
+    case r: LWWRegister[Any] @unchecked ⇒ Some(r.value)
+    case _                              ⇒ None
   }
 
 }
@@ -70,29 +70,29 @@ object LWWRegister {
  * use a timestamp value based on something else, for example an increasing version number
  * from a database record that is used for optimistic concurrency control.
  */
-final case class LWWRegister(
+final case class LWWRegister[A](
   private[akka] val node: UniqueAddress,
-  private[akka] val state: Any,
+  private[akka] val state: A,
   val timestamp: Long)
   extends ReplicatedData with ReplicatedDataSerialization {
   import LWWRegister.{ Clock, defaultClock }
 
-  type T = LWWRegister
+  type T = LWWRegister[A]
 
   /**
    * Scala API
    */
-  def value: Any = state
+  def value: A = state
 
   /**
    * Java API
    */
-  def getValue(): AnyRef = state.asInstanceOf[AnyRef]
+  def getValue(): A = value
 
-  def withValue(node: Cluster, value: Any): LWWRegister =
+  def withValue(node: Cluster, value: A): LWWRegister[A] =
     withValue(node, value, defaultClock)
 
-  def withValue(node: Cluster, value: Any, clock: Clock): LWWRegister =
+  def withValue(node: Cluster, value: A, clock: Clock): LWWRegister[A] =
     withValue(node.selfUniqueAddress, value, clock)
 
   def updatedBy: UniqueAddress = node
@@ -100,10 +100,10 @@ final case class LWWRegister(
   /**
    * INTERNAL API
    */
-  private[akka] def withValue(node: UniqueAddress, value: Any, clock: Clock): LWWRegister =
+  private[akka] def withValue(node: UniqueAddress, value: A, clock: Clock): LWWRegister[A] =
     copy(node = node, state = value, timestamp = clock.nextTimestamp(timestamp))
 
-  override def merge(that: LWWRegister): LWWRegister =
+  override def merge(that: LWWRegister[A]): LWWRegister[A] =
     if (that.timestamp > this.timestamp) that
     else if (that.timestamp < this.timestamp) this
     else if (that.node < this.node) that

@@ -62,8 +62,8 @@ class ReplicatorChaosSpec extends MultiNodeSpec(ReplicatorChaosSpec) with STMult
         val value = expectMsgPF() {
           case GetSuccess(`key`, c: GCounter, _)  ⇒ c.value
           case GetSuccess(`key`, c: PNCounter, _) ⇒ c.value
-          case GetSuccess(`key`, c: GSet, _)      ⇒ c.value
-          case GetSuccess(`key`, c: ORSet, _)     ⇒ c.value
+          case GetSuccess(`key`, c: GSet[_], _)   ⇒ c.value
+          case GetSuccess(`key`, c: ORSet[_], _)  ⇒ c.value
         }
         value should be(expected)
       }

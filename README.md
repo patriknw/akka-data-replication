@@ -64,8 +64,8 @@ class DataBot extends Actor with ActorLogging {
 
     case _: UpdateResponse => // ignore
 
-    case Changed("key", data: ORSet) =>
-      log.info("Current elements: {}", data.value)
+    case Changed("key", ORSet(elements) =>
+      log.info("Current elements: {}", elements)
   }
 
   override def postStop(): Unit = tickTask.cancel()

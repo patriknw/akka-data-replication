@@ -156,13 +156,13 @@ class ReplicatedDataSerializerSpec extends TestKit(ActorSystem("ReplicatedDataSe
     "serialize ORMultiMap" in {
       checkSerialization(ORMultiMap())
       checkSerialization(ORMultiMap().addBinding(address1, "a", "A"))
-      checkSerialization(ORMultiMap()
+      checkSerialization(ORMultiMap.empty[String]
         .addBinding(address1, "a", "A1")
         .put(address2, "b", Set("B1", "B2", "B3"))
         .addBinding(address2, "a", "A2"))
 
-      val m1 = ORMultiMap().addBinding(address1, "a", "A1").addBinding(address2, "a", "A2")
-      val m2 = ORMultiMap().put(address2, "b", Set("B1", "B2", "B3"))
+      val m1 = ORMultiMap.empty[String].addBinding(address1, "a", "A1").addBinding(address2, "a", "A2")
+      val m2 = ORMultiMap.empty[String].put(address2, "b", Set("B1", "B2", "B3"))
       checkSameContent(m1.merge(m2), m2.merge(m1))
     }
 

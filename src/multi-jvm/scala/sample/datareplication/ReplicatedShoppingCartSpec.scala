@@ -65,8 +65,8 @@ class ShoppingCart(userId: String) extends Actor with Stash {
     case GetCart ⇒
       replicator ! Get(DataKey, readQuorum, Some(sender()))
 
-    case GetSuccess(DataKey, data: LWWMap, Some(replyTo: ActorRef)) ⇒
-      val cart = Cart(data.entries.values.map { case line: LineItem ⇒ line }.toSet)
+    case GetSuccess(DataKey, data: LWWMap[LineItem] @unchecked, Some(replyTo: ActorRef)) ⇒
+      val cart = Cart(data.entries.values.toSet)
       replyTo ! cart
 
     case NotFound(DataKey, Some(replyTo: ActorRef)) ⇒
@@ -77,14 +77,14 @@ class ShoppingCart(userId: String) extends Actor with Stash {
       replicator ! Get(DataKey, ReadLocal, Some(replyTo))
 
     case cmd @ AddItem(item) ⇒
-      val update = Update(DataKey, LWWMap(), readQuorum, writeQuorum, Some(cmd)) {
+      val update = Update(DataKey, LWWMap.empty[LineItem], readQuorum, writeQuorum, Some(cmd)) {
         cart => updateCart(cart, item)
       }
       replicator ! update
 
     case ReadFailure(DataKey, Some(AddItem(item))) =>
       // ReadQuorum of Update failed, fall back to best effort local value
-      replicator ! Update(DataKey, LWWMap(), writeQuorum, None) {
+      replicator ! Update(DataKey, LWWMap.empty[LineItem], writeQuorum, None) {
         cart => updateCart(cart, item)
       }
 
@@ -104,12 +104,11 @@ class ShoppingCart(userId: String) extends Actor with Stash {
     // UpdateTimeout, will eventually be replicated
   }
 
-  def updateCart(data: LWWMap, item: LineItem): LWWMap =
+  def updateCart(data: LWWMap[LineItem], item: LineItem): LWWMap[LineItem] =
     data.get(item.productId) match {
       case Some(LineItem(_, _, existingQuantity)) ⇒
         data + (item.productId -> item.copy(quantity = existingQuantity + item.quantity))
       case None ⇒ data + (item.productId -> item)
-      case _    ⇒ throw new IllegalStateException
     }
 
   override def unhandled(msg: Any): Unit = msg match {

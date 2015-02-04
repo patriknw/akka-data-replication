@@ -7,7 +7,7 @@ import akka.cluster.Cluster
 import akka.cluster.UniqueAddress
 
 object PNCounterMap {
-  val empty: PNCounterMap = new PNCounterMap
+  val empty: PNCounterMap = new PNCounterMap(ORMap.empty)
   def apply(): PNCounterMap = empty
   /**
    * Java API
@@ -24,17 +24,14 @@ object PNCounterMap {
  * Map of named counters. Specialized [[ORMap]] with [[PNCounter]] values.
  */
 final case class PNCounterMap(
-  private[akka] val underlying: ORMap = ORMap.empty)
+  private[akka] val underlying: ORMap[PNCounter])
   extends ReplicatedData with ReplicatedDataSerialization with RemovedNodePruning {
 
   type T = PNCounterMap
 
-  def entries: Map[String, Long] = underlying.entries.map { case (k, c: PNCounter) ⇒ k -> c.value }
+  def entries: Map[String, Long] = underlying.entries.map { case (k, c) ⇒ k -> c.value }
 
-  def get(key: String): Option[Long] = underlying.get(key) match {
-    case Some(c: PNCounter) ⇒ Some(c.value)
-    case _                  ⇒ None
-  }
+  def get(key: String): Option[Long] = underlying.get(key).map(_.value)
 
   /**
    * Increment the counter with the delta specified.

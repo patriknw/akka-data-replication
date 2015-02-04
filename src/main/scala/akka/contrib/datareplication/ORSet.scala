@@ -11,16 +11,17 @@ import scala.collection.immutable.TreeMap
 // TODO this class can be optimized, but I wanted to start with correct functionality and comparability with riak_dt_orswot
 
 object ORSet {
-  val empty: ORSet = new ORSet
-  def apply(): ORSet = empty
+  private val _empty: ORSet[Any] = new ORSet(Map.empty, new VectorClock)
+  def empty[A]: ORSet[A] = _empty.asInstanceOf[ORSet[A]]
+  def apply(): ORSet[Any] = _empty
   /**
    * Java API
    */
-  def create(): ORSet = empty
+  def create[A](): ORSet[A] = empty[A]
 
   def unapply(value: Any): Option[Set[Any]] = value match {
-    case s: ORSet ⇒ Some(s.value)
-    case _        ⇒ None
+    case s: ORSet[Any] @unchecked ⇒ Some(s.value)
+    case _                        ⇒ None
   }
 
   /**
@@ -60,8 +61,8 @@ object ORSet {
    * INTERNAL API
    * @see [[ORSet#merge]]
    */
-  private[akka] def mergeCommonKeys(commonKeys: Set[Any], lhs: ORSet, rhs: ORSet): Map[Any, ORSet.Dot] = {
-    commonKeys.foldLeft(Map.empty[Any, ORSet.Dot]) {
+  private[akka] def mergeCommonKeys[A](commonKeys: Set[A], lhs: ORSet[A], rhs: ORSet[A]): Map[A, ORSet.Dot] = {
+    commonKeys.foldLeft(Map.empty[A, ORSet.Dot]) {
       case (acc, k) ⇒
         val lhsDots = lhs.elements(k).versions
         val rhsDots = rhs.elements(k).versions
@@ -84,8 +85,8 @@ object ORSet {
    * INTERNAL API
    * @see [[ORSet#merge]]
    */
-  private[akka] def mergeDisjointKeys(keys: Set[Any], elements: Map[Any, ORSet.Dot], vclock: VectorClock,
-                                      accumulator: Map[Any, ORSet.Dot]): Map[Any, ORSet.Dot] = {
+  private[akka] def mergeDisjointKeys[A](keys: Set[A], elements: Map[A, ORSet.Dot], vclock: VectorClock,
+                                         accumulator: Map[A, ORSet.Dot]): Map[A, ORSet.Dot] = {
     keys.foldLeft(accumulator) {
       case (acc, k) ⇒
         val dots = elements(k)
@@ -124,44 +125,44 @@ object ORSet {
  * Set. If the Set clock dominates the dot, that means the other Set has removed this
  * element already, and the item is not in the merged Set.
  */
-final case class ORSet(
-  private[akka] val elements: Map[Any, ORSet.Dot] = Map.empty,
-  private[akka] val vclock: VectorClock = new VectorClock)
+final case class ORSet[A](
+  private[akka] val elements: Map[A, ORSet.Dot],
+  private[akka] val vclock: VectorClock)
   extends ReplicatedData with ReplicatedDataSerialization with RemovedNodePruning {
 
-  type T = ORSet
+  type T = ORSet[A]
 
   /**
    * Scala API
    */
-  def value: Set[Any] = elements.keySet
+  def value: Set[A] = elements.keySet
 
   /**
    * Java API
    */
-  def getValue(): java.util.Set[Any] = {
+  def getValue(): java.util.Set[A] = {
     import scala.collection.JavaConverters._
     value.asJava
   }
 
-  def contains(a: Any): Boolean = elements.contains(a)
+  def contains(a: A): Boolean = elements.contains(a)
 
   def isEmpty: Boolean = elements.isEmpty
 
   /**
    * Adds an element to the set
    */
-  def +(element: Any)(implicit node: Cluster): ORSet = add(node, element)
+  def +(element: A)(implicit node: Cluster): ORSet[A] = add(node, element)
 
   /**
    * Adds an element to the set
    */
-  def add(node: Cluster, element: Any): ORSet = add(node.selfUniqueAddress, element)
+  def add(node: Cluster, element: A): ORSet[A] = add(node.selfUniqueAddress, element)
 
   /**
    * INTERNAL API
    */
-  private[akka] def add(node: UniqueAddress, element: Any): ORSet = {
+  private[akka] def add(node: UniqueAddress, element: A): ORSet[A] = {
     val newVclock = vclock + node
     val newDot = new VectorClock(versions = TreeMap(node -> newVclock.versions(node)))
     ORSet(elements = elements.updated(element, newDot), vclock = newVclock)
@@ -170,28 +171,28 @@ final case class ORSet(
   /**
    * Removes an element from the set.
    */
-  def -(element: Any)(implicit node: Cluster): ORSet = remove(node, element)
+  def -(element: A)(implicit node: Cluster): ORSet[A] = remove(node, element)
 
   /**
    * Removes an element from the set.
    */
-  def remove(node: Cluster, element: Any): ORSet = remove(node.selfUniqueAddress, element)
+  def remove(node: Cluster, element: A): ORSet[A] = remove(node.selfUniqueAddress, element)
 
   /**
    * INTERNAL API
    */
-  private[akka] def remove(node: UniqueAddress, element: Any): ORSet =
+  private[akka] def remove(node: UniqueAddress, element: A): ORSet[A] =
     copy(elements = elements - element)
 
   /**
    * Removes all elements from the set, but keeps the history.
    */
-  def clear(node: Cluster): ORSet = clear(node.selfUniqueAddress)
+  def clear(node: Cluster): ORSet[A] = clear(node.selfUniqueAddress)
 
   /**
    * INTERNAL API
    */
-  private[akka] def clear(node: UniqueAddress): ORSet = copy(elements = Map.empty)
+  private[akka] def clear(node: UniqueAddress): ORSet[A] = copy(elements = Map.empty)
 
   /**
    * When element is in this Set but not in that Set:
@@ -206,7 +207,7 @@ final case class ORSet(
    * and the other Set clock dominates those dots, then we need to drop those dots.
    * Keep only common dots, and dots that are not dominated by the other sides clock
    */
-  override def merge(that: ORSet): ORSet = {
+  override def merge(that: ORSet[A]): ORSet[A] = {
     val thisKeys = elements.keySet
     val thatKeys = that.elements.keySet
     val commonKeys = thisKeys.intersect(thatKeys)
@@ -224,8 +225,8 @@ final case class ORSet(
   override def needPruningFrom(removedNode: UniqueAddress): Boolean =
     vclock.needPruningFrom(removedNode)
 
-  override def prune(removedNode: UniqueAddress, collapseInto: UniqueAddress): ORSet = {
-    val pruned = elements.foldLeft(Map.empty[Any, ORSet.Dot]) {
+  override def prune(removedNode: UniqueAddress, collapseInto: UniqueAddress): ORSet[A] = {
+    val pruned = elements.foldLeft(Map.empty[A, ORSet.Dot]) {
       case (acc, (elem, dot)) ⇒
         if (dot.needPruningFrom(removedNode)) acc.updated(elem, dot.prune(removedNode, collapseInto))
         else acc
@@ -242,7 +243,7 @@ final case class ORSet(
 
   }
 
-  override def pruningCleanup(removedNode: UniqueAddress): ORSet = {
+  override def pruningCleanup(removedNode: UniqueAddress): ORSet[A] = {
     val updated = elements.foldLeft(elements) {
       case (acc, (elem, dot)) ⇒
         if (dot.needPruningFrom(removedNode)) acc.updated(elem, dot.pruningCleanup(removedNode))

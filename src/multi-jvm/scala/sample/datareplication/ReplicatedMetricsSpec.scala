@@ -92,20 +92,20 @@ class ReplicatedMetrics(measureInterval: FiniteDuration, cleanupInterval: Finite
       val heap = memoryMBean.getHeapMemoryUsage
       val used = heap.getUsed
       val max = heap.getMax
-      replicator ! Update("usedHeap", LWWMap.empty, WriteLocal)(_ + (node -> used))
-      replicator ! Update("maxHeap", LWWMap.empty, WriteLocal) { data =>
+      replicator ! Update("usedHeap", LWWMap.empty[Long], WriteLocal)(_ + (node -> used))
+      replicator ! Update("maxHeap", LWWMap.empty[Long], WriteLocal) { data =>
         data.get(node) match {
           case Some(`max`) => data // unchanged
           case _           => data + (node -> max)
         }
       }
 
-    case Changed("maxHeap", data: LWWMap) =>
-      maxHeap = data.entries.map { case (key, value: Long) => key -> value }
+    case Changed("maxHeap", data: LWWMap[Long] @unchecked) =>
+      maxHeap = data.entries
 
-    case Changed("usedHeap", data: LWWMap) =>
+    case Changed("usedHeap", data: LWWMap[Long] @unchecked) =>
       val usedHeapPercent = UsedHeap(data.entries.collect {
-        case (key, value: Long) if maxHeap.contains(key) =>
+        case (key, value) if maxHeap.contains(key) =>
           (key -> (value.toDouble / maxHeap(key)) * 100.0)
       })
       log.debug("Node {} observed:\n{}", node, usedHeapPercent)
@@ -120,11 +120,11 @@ class ReplicatedMetrics(measureInterval: FiniteDuration, cleanupInterval: Finite
       nodesInCluster -= nodeKey(m.address)
 
     case Cleanup =>
-      def cleanupRemoved(data: LWWMap): LWWMap =
+      def cleanupRemoved(data: LWWMap[Long]): LWWMap[Long] =
         (data.entries.keySet -- nodesInCluster).foldLeft(data) { case (d, key) => d - key }
 
-      replicator ! Update("usedHeap", LWWMap.empty, WriteLocal)(cleanupRemoved)
-      replicator ! Update("maxHeap", LWWMap.empty, WriteLocal)(cleanupRemoved)
+      replicator ! Update("usedHeap", LWWMap.empty[Long], WriteLocal)(cleanupRemoved)
+      replicator ! Update("maxHeap", LWWMap.empty[Long], WriteLocal)(cleanupRemoved)
   }
 
 }

@@ -112,7 +112,7 @@ class PerformanceSpec extends MultiNodeSpec(PerformanceSpec) with STMultiNodeSpe
       awaitAssert {
         val readProbe = TestProbe()
         replicator.tell(Get(key, ReadLocal), readProbe.ref)
-        val result = readProbe.expectMsgPF() { case GetSuccess(key, set: ORSet, _) ⇒ set }
+        val result = readProbe.expectMsgPF() { case GetSuccess(key, set: ORSet[Int] @unchecked, _) ⇒ set }
         result.value should be(expectedData)
       }
     }

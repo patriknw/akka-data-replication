@@ -7,16 +7,17 @@ import akka.cluster.Cluster
 import akka.cluster.UniqueAddress
 
 object ORMap {
-  val empty: ORMap = new ORMap
-  def apply(): ORMap = empty
+  private val _empty: ORMap[ReplicatedData] = new ORMap(ORSet.empty, Map.empty)
+  def empty[A <: ReplicatedData]: ORMap[A] = _empty.asInstanceOf[ORMap[A]]
+  def apply(): ORMap[ReplicatedData] = _empty
   /**
    * Java API
    */
-  def create(): ORMap = empty
+  def create[A <: ReplicatedData](): ORMap[A] = empty[A]
 
   def unapply(value: Any): Option[Map[String, ReplicatedData]] = value match {
-    case r: ORMap ⇒ Some(r.entries)
-    case _        ⇒ None
+    case r: ORMap[ReplicatedData] @unchecked ⇒ Some(r.entries)
+    case _                                   ⇒ None
   }
 }
 
@@ -27,29 +28,29 @@ object ORMap {
  * concurrent updates the values are merged, and must therefore be [[ReplicatedData]]
  * themselves.
  */
-final case class ORMap(
-  private[akka] val keys: ORSet = ORSet(),
-  private[akka] val values: Map[String, ReplicatedData] = Map.empty)
+final case class ORMap[A <: ReplicatedData](
+  private[akka] val keys: ORSet[String],
+  private[akka] val values: Map[String, A])
   extends ReplicatedData with ReplicatedDataSerialization with RemovedNodePruning {
 
-  type T = ORMap
+  type T = ORMap[A]
 
   /**
    * Scala API
    */
-  def entries: Map[String, ReplicatedData] = values
+  def entries: Map[String, A] = values
 
   /**
    * Java API
    */
-  def getEntries(): java.util.Map[String, ReplicatedData] = {
+  def getEntries(): java.util.Map[String, A] = {
     import scala.collection.JavaConverters._
     entries.asJava
   }
 
-  def get(key: String): Option[ReplicatedData] = values.get(key)
+  def get(key: String): Option[A] = values.get(key)
 
-  def getOrElse(key: String, default: => ReplicatedData): ReplicatedData = values.getOrElse(key, default)
+  def getOrElse(key: String, default: => A): A = values.getOrElse(key, default)
 
   def contains(key: String): Boolean = values.contains(key)
 
@@ -58,7 +59,7 @@ final case class ORMap(
   /**
    * Adds an entry to the map
    */
-  def +(entry: (String, ReplicatedData))(implicit node: Cluster): ORMap = {
+  def +(entry: (String, A))(implicit node: Cluster): ORMap[A] = {
     val (key, value) = entry
     put(node, key, value)
   }
@@ -76,13 +77,13 @@ final case class ORMap(
    * value, because important history can be lost when replacing the `ORSet` and
    * undesired effects of merging will occur. Use [[ORMultiMap]] or [[#updated]] instead.
    */
-  def put(node: Cluster, key: String, value: ReplicatedData): ORMap = put(node.selfUniqueAddress, key, value)
+  def put(node: Cluster, key: String, value: A): ORMap[A] = put(node.selfUniqueAddress, key, value)
 
   /**
    * INTERNAL API
    */
-  private[akka] def put(node: UniqueAddress, key: String, value: ReplicatedData): ORMap =
-    if (value.isInstanceOf[ORSet] && values.contains(key))
+  private[akka] def put(node: UniqueAddress, key: String, value: A): ORMap[A] =
+    if (value.isInstanceOf[ORSet[_]] && values.contains(key))
       throw new IllegalArgumentException(
         "`ORMap.put` must not be used to replace an existing `ORSet` " +
           "value, because important history can be lost when replacing the `ORSet` and " +
@@ -96,7 +97,7 @@ final case class ORMap(
    * If there is no current value for the `key` the `initial` value will be
    * passed to the `modify` function.
    */
-  def updated[A <: ReplicatedData](node: Cluster, key: String, initial: A)(modify: A => A): ORMap =
+  def updated(node: Cluster, key: String, initial: A)(modify: A => A): ORMap[A] =
     updated(node.selfUniqueAddress, key, initial)(modify)
 
   /**
@@ -105,15 +106,15 @@ final case class ORMap(
    * If there is no current value for the `key` the `initial` value will be
    * passed to the `modify` function.
    */
-  def updated[A <: ReplicatedData](node: Cluster, key: String, initial: A, modify: akka.japi.Function[A, A]): ORMap =
+  def updated(node: Cluster, key: String, initial: A, modify: akka.japi.Function[A, A]): ORMap[A] =
     updated(node, key, initial)(value => modify.apply(value))
 
   /**
    * INTERNAL API
    */
-  private[akka] def updated[A <: ReplicatedData](node: UniqueAddress, key: String, initial: A)(modify: A => A): ORMap = {
+  private[akka] def updated(node: UniqueAddress, key: String, initial: A)(modify: A => A): ORMap[A] = {
     val newValue = values.get(key) match {
-      case Some(old) => modify(old.asInstanceOf[A])
+      case Some(old) => modify(old)
       case _         => modify(initial)
     }
     ORMap(keys.add(node, key), values.updated(key, newValue))
@@ -124,25 +125,25 @@ final case class ORMap(
    * Note that if there is a conflicting update on another node the entry will
    * not be removed after merge.
    */
-  def -(key: String)(implicit node: Cluster): ORMap = remove(node, key)
+  def -(key: String)(implicit node: Cluster): ORMap[A] = remove(node, key)
 
   /**
    * Removes an entry from the map.
    * Note that if there is a conflicting update on another node the entry will
    * not be removed after merge.
    */
-  def remove(node: Cluster, key: String): ORMap = remove(node.selfUniqueAddress, key)
+  def remove(node: Cluster, key: String): ORMap[A] = remove(node.selfUniqueAddress, key)
 
   /**
    * INTERNAL API
    */
-  private[akka] def remove(node: UniqueAddress, key: String): ORMap = {
+  private[akka] def remove(node: UniqueAddress, key: String): ORMap[A] = {
     ORMap(keys.remove(node, key), values - key)
   }
 
-  override def merge(that: ORMap): ORMap = {
+  override def merge(that: ORMap[A]): ORMap[A] = {
     val mergedKeys = keys.merge(that.keys)
-    var mergedValues = Map.empty[String, ReplicatedData]
+    var mergedValues = Map.empty[String, A]
     mergedKeys.elements.keysIterator.foreach {
       case key: String ⇒
         (this.values.get(key), that.values.get(key)) match {
@@ -152,7 +153,7 @@ final case class ORMap(
                 s"[${thisValue.getClass.getName}], got [${thatValue.getClass.getName}]"
               throw new IllegalArgumentException(errMsg)
             }
-            val mergedValue = thisValue.merge(thatValue.asInstanceOf[thisValue.T])
+            val mergedValue = thisValue.merge(thatValue.asInstanceOf[thisValue.T]).asInstanceOf[A]
             mergedValues = mergedValues.updated(key, mergedValue)
           case (Some(thisValue), None) ⇒
             mergedValues = mergedValues.updated(key, thisValue)
@@ -172,21 +173,21 @@ final case class ORMap(
     }
   }
 
-  override def prune(removedNode: UniqueAddress, collapseInto: UniqueAddress): ORMap = {
+  override def prune(removedNode: UniqueAddress, collapseInto: UniqueAddress): ORMap[A] = {
     val prunedKeys = keys.prune(removedNode, collapseInto)
     val prunedValues = values.foldLeft(values) {
       case (acc, (key, data: RemovedNodePruning)) if data.needPruningFrom(removedNode) ⇒
-        acc.updated(key, data.prune(removedNode, collapseInto))
+        acc.updated(key, data.prune(removedNode, collapseInto).asInstanceOf[A])
       case (acc, _) ⇒ acc
     }
     ORMap(prunedKeys, prunedValues)
   }
 
-  override def pruningCleanup(removedNode: UniqueAddress): ORMap = {
+  override def pruningCleanup(removedNode: UniqueAddress): ORMap[A] = {
     val pruningCleanupedKeys = keys.pruningCleanup(removedNode)
     val pruningCleanupedValues = values.foldLeft(values) {
       case (acc, (key, data: RemovedNodePruning)) if data.needPruningFrom(removedNode) ⇒
-        acc.updated(key, data.pruningCleanup(removedNode))
+        acc.updated(key, data.pruningCleanup(removedNode).asInstanceOf[A])
       case (acc, _) ⇒ acc
     }
     ORMap(pruningCleanupedKeys, pruningCleanupedValues)

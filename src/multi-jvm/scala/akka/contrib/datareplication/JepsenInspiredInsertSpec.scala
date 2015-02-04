@@ -127,7 +127,7 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
         awaitAssert {
           val readProbe = TestProbe()
           replicator.tell(Get(key, ReadLocal), readProbe.ref)
-          val result = readProbe.expectMsgPF() { case GetSuccess(key, set: ORSet, _) ⇒ set }
+          val result = readProbe.expectMsgPF() { case GetSuccess(key, set: ORSet[_], _) ⇒ set }
           result.value should be(expectedData)
         }
       }
@@ -160,7 +160,7 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
       // read from quorum of nodes, which is enough to retrieve all data
       val readProbe = TestProbe()
       replicator.tell(Get(key, readQuorum), readProbe.ref)
-      val result = readProbe.expectMsgPF() { case GetSuccess(key, set: ORSet, _) ⇒ set }
+      val result = readProbe.expectMsgPF() { case GetSuccess(key, set: ORSet[_], _) ⇒ set }
       val survivors = result.value.size
       result.value should be(expectedData)
 
@@ -206,7 +206,7 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
         awaitAssert {
           val readProbe = TestProbe()
           replicator.tell(Get(key, ReadLocal), readProbe.ref)
-          val result = readProbe.expectMsgPF() { case GetSuccess(key, set: ORSet, _) ⇒ set }
+          val result = readProbe.expectMsgPF() { case GetSuccess(key, set: ORSet[_], _) ⇒ set }
           result.value should be(expectedData)
         }
       }
@@ -257,7 +257,7 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
       runOn(n2, n3) {
         val readProbe = TestProbe()
         replicator.tell(Get(key, readQuorum), readProbe.ref)
-        val result = readProbe.expectMsgPF() { case GetSuccess(key, set: ORSet, _) ⇒ set }
+        val result = readProbe.expectMsgPF() { case GetSuccess(key, set: ORSet[_], _) ⇒ set }
         val survivors = result.value.size
         result.value should be(expectedData)
       }
@@ -269,7 +269,7 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
         awaitAssert {
           val readProbe = TestProbe()
           replicator.tell(Get(key, ReadLocal), readProbe.ref)
-          val result = readProbe.expectMsgPF() { case GetSuccess(key, set: ORSet, _) ⇒ set }
+          val result = readProbe.expectMsgPF() { case GetSuccess(key, set: ORSet[_], _) ⇒ set }
           result.value should be(expectedData)
         }
       }
