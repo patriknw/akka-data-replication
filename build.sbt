@@ -11,7 +11,7 @@ val project = Project(
     organization := "com.github.patriknw",
     name := "akka-data-replication",
     licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0")),
-    version := "0.10",
+    version := "0.11-SNAPSHOT",
     scalaVersion := "2.11.5",
     crossScalaVersions := Seq("2.10.4", "2.11.5"),
     // compile options
