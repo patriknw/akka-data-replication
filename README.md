@@ -74,31 +74,31 @@ class DataBot extends Actor with ActorLogging {
 ```
     
 The full source code for this sample is in 
-[DataBot.scala](https://github.com/patriknw/akka-data-replication/blob/v0.9/src/test/scala/akka/contrib/datareplication/sample/DataBot.scala).   
+[DataBot.scala](https://github.com/patriknw/akka-data-replication/blob/v0.10/src/test/scala/akka/contrib/datareplication/sample/DataBot.scala).   
 
 More detailed documentation can be found in the
-[ScalaDoc](http://dl.bintray.com/patriknw/maven/com/github/patriknw/akka-data-replication_2.11/0.9/akka-data-replication_2.11-0.9-javadoc.jar)
+[ScalaDoc](http://dl.bintray.com/patriknw/maven/com/github/patriknw/akka-data-replication_2.11/0.10/akka-data-replication_2.11-0.10-javadoc.jar)
 of `Replicator` and linked classes.
 
 Other examples:
 
-- [Replicated Cache](https://github.com/patriknw/akka-data-replication/blob/v0.9/src/multi-jvm/scala/sample/datareplication/ReplicatedCacheSpec.scala#L30)
-- [Replicated Metrics](https://github.com/patriknw/akka-data-replication/blob/v0.9/src/multi-jvm/scala/sample/datareplication/ReplicatedMetricsSpec.scala#L30)
-- [Replicated Service Registry](https://github.com/patriknw/akka-data-replication/blob/9e03df1452c370d7300f711a60f457bc96b8a823/src/multi-jvm/scala/sample/datareplication/ReplicatedServiceRegistrySpec.scala#L46)
-- [VotingService](https://github.com/patriknw/akka-data-replication/blob/v0.9/src/multi-jvm/scala/sample/datareplication/VotingContestSpec.scala#L30)
-- [ShoppingCart](https://github.com/patriknw/akka-data-replication/blob/v0.9/src/multi-jvm/scala/sample/datareplication/ReplicatedShoppingCartSpec.scala#L31)
+- [Replicated Cache](https://github.com/patriknw/akka-data-replication/blob/v0.10/src/multi-jvm/scala/sample/datareplication/ReplicatedCacheSpec.scala#L30)
+- [Replicated Metrics](https://github.com/patriknw/akka-data-replication/blob/v0.10/src/multi-jvm/scala/sample/datareplication/ReplicatedMetricsSpec.scala#L30)
+- [Replicated Service Registry](https://github.com/patriknw/akka-data-replication/blob/v0.10/src/multi-jvm/scala/sample/datareplication/ReplicatedServiceRegistrySpec.scala#L46)
+- [VotingService](https://github.com/patriknw/akka-data-replication/blob/v0.10/src/multi-jvm/scala/sample/datareplication/VotingContestSpec.scala#L30)
+- [ShoppingCart](https://github.com/patriknw/akka-data-replication/blob/v0.10/src/multi-jvm/scala/sample/datareplication/ReplicatedShoppingCartSpec.scala#L31)
 
 Dependency
 ----------
 
-Latest version of `akka-data-replication` is `0.9`. This version depends on Akka 2.3.9 and is
+Latest version of `akka-data-replication` is `0.10`. This version depends on Akka 2.3.9 and is
 cross-built against Scala 2.10.4 and 2.11.5.
 
 Add the following lines to your `build.sbt` file:
 
     resolvers += "patriknw at bintray" at "http://dl.bintray.com/patriknw/maven"
 
-    libraryDependencies += "com.github.patriknw" %% "akka-data-replication" % "0.9"
+    libraryDependencies += "com.github.patriknw" %% "akka-data-replication" % "0.10"
 
 More Resources
 --------------
