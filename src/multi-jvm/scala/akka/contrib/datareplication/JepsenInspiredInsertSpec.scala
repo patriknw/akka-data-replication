@@ -128,7 +128,7 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
           val readProbe = TestProbe()
           replicator.tell(Get(key, ReadLocal), readProbe.ref)
           val result = readProbe.expectMsgPF() { case GetSuccess(key, set: ORSet[_], _) ⇒ set }
-          result.value should be(expectedData)
+          result.elements should be(expectedData)
         }
       }
 
@@ -161,8 +161,8 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
       val readProbe = TestProbe()
       replicator.tell(Get(key, readQuorum), readProbe.ref)
       val result = readProbe.expectMsgPF() { case GetSuccess(key, set: ORSet[_], _) ⇒ set }
-      val survivors = result.value.size
-      result.value should be(expectedData)
+      val survivors = result.elements.size
+      result.elements should be(expectedData)
 
     }
 
@@ -207,7 +207,7 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
           val readProbe = TestProbe()
           replicator.tell(Get(key, ReadLocal), readProbe.ref)
           val result = readProbe.expectMsgPF() { case GetSuccess(key, set: ORSet[_], _) ⇒ set }
-          result.value should be(expectedData)
+          result.elements should be(expectedData)
         }
       }
 
@@ -258,8 +258,8 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
         val readProbe = TestProbe()
         replicator.tell(Get(key, readQuorum), readProbe.ref)
         val result = readProbe.expectMsgPF() { case GetSuccess(key, set: ORSet[_], _) ⇒ set }
-        val survivors = result.value.size
-        result.value should be(expectedData)
+        val survivors = result.elements.size
+        result.elements should be(expectedData)
       }
       // but on the 3 node side, read from quorum doesn't mean that we are guaranteed to see
       // the writes from the other side, yet
@@ -270,7 +270,7 @@ class JepsenInspiredInsertSpec extends MultiNodeSpec(JepsenInspiredInsertSpec) w
           val readProbe = TestProbe()
           replicator.tell(Get(key, ReadLocal), readProbe.ref)
           val result = readProbe.expectMsgPF() { case GetSuccess(key, set: ORSet[_], _) ⇒ set }
-          result.value should be(expectedData)
+          result.elements should be(expectedData)
         }
       }
     }

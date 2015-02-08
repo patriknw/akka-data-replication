@@ -5,6 +5,7 @@ package akka.contrib.datareplication
 
 import akka.cluster.Cluster
 import akka.cluster.UniqueAddress
+import akka.util.HashCode
 
 object ORMap {
   private val _empty: ORMap[ReplicatedData] = new ORMap(ORSet.empty, Map.empty)
@@ -15,20 +16,23 @@ object ORMap {
    */
   def create[A <: ReplicatedData](): ORMap[A] = empty[A]
 
-  def unapply(value: Any): Option[Map[String, ReplicatedData]] = value match {
-    case r: ORMap[ReplicatedData] @unchecked ⇒ Some(r.entries)
-    case _                                   ⇒ None
-  }
+  /**
+   * Extract the [[ORMap#elements]].
+   */
+  def unapply[A <: ReplicatedData](m: ORMap[A]): Option[Map[String, A]] = Some(m.entries)
+
 }
 
 /**
  * Implements a 'Observed Remove Map' CRDT, also called a 'OR-Map'.
  *
- * It has similar semantics as an [[ORSet]], but in case
- * concurrent updates the values are merged, and must therefore be [[ReplicatedData]]
- * themselves.
+ * It has similar semantics as an [[ORSet]], but in case of concurrent updates
+ * the values are merged, and must therefore be [[ReplicatedData]] types themselves.
+ *
+ * This class is immutable, i.e. "modifying" methods return a new instance.
  */
-final case class ORMap[A <: ReplicatedData](
+@SerialVersionUID(1L)
+final class ORMap[A <: ReplicatedData] private[akka] (
   private[akka] val keys: ORSet[String],
   private[akka] val values: Map[String, A])
   extends ReplicatedData with ReplicatedDataSerialization with RemovedNodePruning {
@@ -36,12 +40,12 @@ final case class ORMap[A <: ReplicatedData](
   type T = ORMap[A]
 
   /**
-   * Scala API
+   * Scala API: All entries of the map.
    */
   def entries: Map[String, A] = values
 
   /**
-   * Java API
+   * Java API: All entries of the map.
    */
   def getEntries(): java.util.Map[String, A] = {
     import scala.collection.JavaConverters._
@@ -50,6 +54,10 @@ final case class ORMap[A <: ReplicatedData](
 
   def get(key: String): Option[A] = values.get(key)
 
+  /**
+   * Scala API: Get the value associated with the key if there is one,
+   * else return the given default.
+   */
   def getOrElse(key: String, default: => A): A = values.getOrElse(key, default)
 
   def contains(key: String): Boolean = values.contains(key)
@@ -58,6 +66,7 @@ final case class ORMap[A <: ReplicatedData](
 
   /**
    * Adds an entry to the map
+   * @see [[#put]]
    */
   def +(entry: (String, A))(implicit node: Cluster): ORMap[A] = {
     val (key, value) = entry
@@ -89,7 +98,7 @@ final case class ORMap[A <: ReplicatedData](
           "value, because important history can be lost when replacing the `ORSet` and " +
           "undesired effects of merging will occur. Use `ORMultiMap` or `ORMap.updated` instead.")
     else
-      ORMap(keys.add(node, key), values.updated(key, value))
+      new ORMap(keys.add(node, key), values.updated(key, value))
 
   /**
    * Scala API: Replace a value by applying the `modify` function on the existing value.
@@ -117,7 +126,7 @@ final case class ORMap[A <: ReplicatedData](
       case Some(old) => modify(old)
       case _         => modify(initial)
     }
-    ORMap(keys.add(node, key), values.updated(key, newValue))
+    new ORMap(keys.add(node, key), values.updated(key, newValue))
   }
 
   /**
@@ -138,13 +147,13 @@ final case class ORMap[A <: ReplicatedData](
    * INTERNAL API
    */
   private[akka] def remove(node: UniqueAddress, key: String): ORMap[A] = {
-    ORMap(keys.remove(node, key), values - key)
+    new ORMap(keys.remove(node, key), values - key)
   }
 
   override def merge(that: ORMap[A]): ORMap[A] = {
     val mergedKeys = keys.merge(that.keys)
     var mergedValues = Map.empty[String, A]
-    mergedKeys.elements.keysIterator.foreach {
+    mergedKeys.elementsMap.keysIterator.foreach {
       case key: String ⇒
         (this.values.get(key), that.values.get(key)) match {
           case (Some(thisValue), Some(thatValue)) ⇒
@@ -163,7 +172,7 @@ final case class ORMap[A <: ReplicatedData](
         }
     }
 
-    ORMap(mergedKeys, mergedValues)
+    new ORMap(mergedKeys, mergedValues)
   }
 
   override def needPruningFrom(removedNode: UniqueAddress): Boolean = {
@@ -180,7 +189,7 @@ final case class ORMap[A <: ReplicatedData](
         acc.updated(key, data.prune(removedNode, collapseInto).asInstanceOf[A])
       case (acc, _) ⇒ acc
     }
-    ORMap(prunedKeys, prunedValues)
+    new ORMap(prunedKeys, prunedValues)
   }
 
   override def pruningCleanup(removedNode: UniqueAddress): ORMap[A] = {
@@ -190,7 +199,24 @@ final case class ORMap[A <: ReplicatedData](
         acc.updated(key, data.pruningCleanup(removedNode).asInstanceOf[A])
       case (acc, _) ⇒ acc
     }
-    ORMap(pruningCleanupedKeys, pruningCleanupedValues)
+    new ORMap(pruningCleanupedKeys, pruningCleanupedValues)
   }
+
+  // this class cannot be a `case class` because we need different `unapply`
+
+  override def toString: String = s"OR$entries"
+
+  override def equals(o: Any): Boolean = o match {
+    case other: ORMap[_] => keys == other.keys && values == other.values
+    case _               => false
+  }
+
+  override def hashCode: Int = {
+    var result = HashCode.SEED
+    result = HashCode.hash(result, keys)
+    result = HashCode.hash(result, values)
+    result
+  }
+
 }
 

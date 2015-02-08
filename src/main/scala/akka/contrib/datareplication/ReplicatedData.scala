@@ -19,6 +19,9 @@ import akka.cluster.UniqueAddress
  * for creating message digests (SHA-1) to detect changes. Therefore it is
  * important that the serialization produce the same bytes for the same content.
  * For example sets and maps should be sorted deterministically in the serialization.
+ *
+ * ReplicatedData types should be immutable, i.e. "modifying" methods should return
+ * a new instance.
  */
 trait ReplicatedData {
   type T <: ReplicatedData
@@ -35,7 +38,7 @@ trait ReplicatedData {
  * Java.
  */
 abstract class AbstractReplicatedData extends ReplicatedData {
-  // it is not possible to use a more strict type, because it is erased somehow, and 
+  // it is not possible to use a more strict type, because it is erased somehow, and
   // the implementation is anyway required to implement
   // merge(that: ReplicatedData): ReplicatedData
   type T = AbstractReplicatedData

@@ -93,7 +93,7 @@ class ReplicatorPruningSpec extends MultiNodeSpec(ReplicatorPruningSpec) with ST
 
       replicator ! Get("B", ReadLocal)
       val oldSet = expectMsgType[GetSuccess].data.asInstanceOf[ORSet[String]]
-      oldSet.value should be(Set("a", "b", "c"))
+      oldSet.elements should be(Set("a", "b", "c"))
 
       replicator ! Get("C", ReadLocal)
       val oldMap = expectMsgType[GetSuccess].data.asInstanceOf[PNCounterMap]
@@ -132,7 +132,7 @@ class ReplicatorPruningSpec extends MultiNodeSpec(ReplicatorPruningSpec) with ST
             replicator ! Get("B", ReadLocal)
             expectMsgPF() {
               case GetSuccess(_, s: ORSet[String] @unchecked, _) ⇒
-                s.value should be(Set("a", "b", "c"))
+                s.elements should be(Set("a", "b", "c"))
                 s.needPruningFrom(thirdUniqueAddress) should be(false)
             }
           }

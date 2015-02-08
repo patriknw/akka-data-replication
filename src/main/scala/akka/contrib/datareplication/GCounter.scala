@@ -14,10 +14,10 @@ object GCounter {
    */
   def create(): GCounter = empty
 
-  def unapply(value: Any): Option[Long] = value match {
-    case c: GCounter ⇒ Some(c.value)
-    case _           ⇒ None
-  }
+  /**
+   * Extract the [[GCounter#value]].
+   */
+  def unapply(c: GCounter): Option[Long] = Some(c.value)
 }
 
 /**
@@ -28,13 +28,19 @@ object GCounter {
  * adds 1 to the count for the current node. Divergent histories are
  * resolved by taking the maximum count for each node (like a vector
  * clock merge). The value of the counter is the sum of all node counts.
+ *
+ * This class is immutable, i.e. "modifying" methods return a new instance.
  */
-final case class GCounter(
+@SerialVersionUID(1L)
+final class GCounter private[akka] (
   private[akka] val state: Map[UniqueAddress, Long] = Map.empty)
   extends ReplicatedData with ReplicatedDataSerialization with RemovedNodePruning {
 
   type T = GCounter
 
+  /**
+   * Current total value of the counter.
+   */
   def value: Long = state.values.sum
 
   /**
@@ -65,8 +71,8 @@ final case class GCounter(
       case Some(v) ⇒
         val tot = v + delta
         require(tot >= 0, "Number overflow")
-        copy(state = state + (key -> tot))
-      case None ⇒ copy(state = state + (key -> delta))
+        new GCounter(state + (key -> tot))
+      case None ⇒ new GCounter(state + (key -> delta))
     }
   }
 
@@ -77,7 +83,7 @@ final case class GCounter(
       if (thisValue > thatValue)
         merged = merged.updated(key, thisValue)
     }
-    GCounter(merged)
+    new GCounter(merged)
   }
 
   override def needPruningFrom(removedNode: UniqueAddress): Boolean =
@@ -85,10 +91,23 @@ final case class GCounter(
 
   override def prune(removedNode: UniqueAddress, collapseInto: UniqueAddress): GCounter =
     state.get(removedNode) match {
-      case Some(value) ⇒ copy(state = state - removedNode).increment(collapseInto, value)
+      case Some(value) ⇒ new GCounter(state - removedNode).increment(collapseInto, value)
       case None        ⇒ this
     }
 
-  override def pruningCleanup(removedNode: UniqueAddress): GCounter = copy(state = state - removedNode)
+  override def pruningCleanup(removedNode: UniqueAddress): GCounter =
+    new GCounter(state - removedNode)
+
+  // this class cannot be a `case class` because we need different `unapply`
+
+  override def toString: String = s"GCounter($value)"
+
+  override def equals(o: Any): Boolean = o match {
+    case other: GCounter => state == other.state
+    case _               => false
+  }
+
+  override def hashCode: Int = state.hashCode
+
 }
 

@@ -8,6 +8,7 @@ import org.scalatest.WordSpec
 import org.scalatest.Matchers
 import akka.actor.Address
 import akka.cluster.UniqueAddress
+import akka.contrib.datareplication.Replicator.Changed
 
 class PNCounterMapSpec extends WordSpec with Matchers {
 
@@ -43,6 +44,17 @@ class PNCounterMapSpec extends WordSpec with Matchers {
       // but if there is a conflicting update the entry is not removed
       val m4 = merged1.increment(node2, "b", 10)
       (m3 merge m4).entries should be(Map("a" -> 1, "b" -> 13, "c" -> 7))
+    }
+
+    "have unapply extractor" in {
+      val m1 = PNCounterMap.empty.increment(node1, "a", 1).increment(node2, "b", 2)
+      val PNCounterMap(entries1) = m1
+      val entries2: Map[String, Long] = entries1
+      Changed("key", m1) match {
+        case Changed("key", PNCounterMap(entries3)) =>
+          val entries4: Map[String, Long] = entries3
+          entries4 should be(Map("a" -> 1L, "b" -> 2L))
+      }
     }
 
   }

@@ -147,7 +147,7 @@ class ReplicatedDataSerializer(val system: ExtendedActorSystem) extends Serializ
     val intElements = new ArrayList[rd.ORSet.IntEntry]
     val longElements = new ArrayList[rd.ORSet.LongEntry]
     val otherElements = new ArrayList[rd.ORSet.OtherEntry]
-    orset.elements.foreach {
+    orset.elementsMap.foreach {
       case (s: String, dot) ⇒
         stringElements.add(rd.ORSet.StringEntry.newBuilder().setElement(s).setDot(vectorClockToProto(dot)).build())
       case (i: Int, dot) ⇒
@@ -187,7 +187,7 @@ class ReplicatedDataSerializer(val system: ExtendedActorSystem) extends Serializ
         orset.getLongElementsList.iterator.asScala.map(e ⇒ e.getElement -> vectorClockFromProto(e.getDot)) ++
         orset.getOtherElementsList.iterator.asScala.map(e ⇒
           otherMessageFromProto(e.getElement) -> vectorClockFromProto(e.getDot))
-    ORSet(elements = entries.toMap, vclock = vectorClockFromProto(orset.getVclock))
+    new ORSet(elementsMap = entries.toMap, vclock = vectorClockFromProto(orset.getVclock))
   }
 
   def flagToProto(flag: Flag): rd.Flag =
@@ -210,7 +210,7 @@ class ReplicatedDataSerializer(val system: ExtendedActorSystem) extends Serializ
     lwwRegisterFromProto(rd.LWWRegister.parseFrom(bytes))
 
   def lwwRegisterFromProto(lwwRegister: rd.LWWRegister): LWWRegister[Any] =
-    LWWRegister(
+    new LWWRegister(
       uniqueAddressFromProto(lwwRegister.getNode),
       otherMessageFromProto(lwwRegister.getState),
       lwwRegister.getTimestamp)
@@ -228,7 +228,7 @@ class ReplicatedDataSerializer(val system: ExtendedActorSystem) extends Serializ
     gcounterFromProto(rd.GCounter.parseFrom(bytes))
 
   def gcounterFromProto(gcounter: rd.GCounter): GCounter = {
-    GCounter(state = gcounter.getEntriesList.asScala.map(entry ⇒
+    new GCounter(state = gcounter.getEntriesList.asScala.map(entry ⇒
       uniqueAddressFromProto(entry.getNode) -> entry.getValue)(breakOut))
   }
 
@@ -242,7 +242,7 @@ class ReplicatedDataSerializer(val system: ExtendedActorSystem) extends Serializ
     pncounterFromProto(rd.PNCounter.parseFrom(bytes))
 
   def pncounterFromProto(pncounter: rd.PNCounter): PNCounter = {
-    PNCounter(
+    new PNCounter(
       increments = gcounterFromProto(pncounter.getIncrements),
       decrements = gcounterFromProto(pncounter.getDecrements))
   }
@@ -279,7 +279,7 @@ class ReplicatedDataSerializer(val system: ExtendedActorSystem) extends Serializ
   def ormapFromProto(ormap: rd.ORMap): ORMap[ReplicatedData] = {
     val entries = ormap.getEntriesList.asScala.map(entry ⇒
       entry.getKey -> otherMessageFromProto(entry.getValue).asInstanceOf[ReplicatedData]).toMap
-    ORMap(
+    new ORMap(
       keys = orsetFromProto(ormap.getKeys).asInstanceOf[ORSet[String]],
       entries)
   }
@@ -299,7 +299,7 @@ class ReplicatedDataSerializer(val system: ExtendedActorSystem) extends Serializ
   def lwwmapFromProto(lwwmap: rd.LWWMap): LWWMap[Any] = {
     val entries = lwwmap.getEntriesList.asScala.map(entry ⇒
       entry.getKey -> lwwRegisterFromProto(entry.getValue)).toMap
-    LWWMap(ORMap(
+    new LWWMap(new ORMap(
       keys = orsetFromProto(lwwmap.getKeys).asInstanceOf[ORSet[String]],
       entries))
   }
@@ -319,7 +319,7 @@ class ReplicatedDataSerializer(val system: ExtendedActorSystem) extends Serializ
   def pncountermapFromProto(pncountermap: rd.PNCounterMap): PNCounterMap = {
     val entries = pncountermap.getEntriesList.asScala.map(entry ⇒
       entry.getKey -> pncounterFromProto(entry.getValue)).toMap
-    PNCounterMap(ORMap(
+    new PNCounterMap(new ORMap(
       keys = orsetFromProto(pncountermap.getKeys).asInstanceOf[ORSet[String]],
       entries))
   }
@@ -339,7 +339,7 @@ class ReplicatedDataSerializer(val system: ExtendedActorSystem) extends Serializ
   def multimapFromProto(multimap: rd.ORMultiMap): ORMultiMap[Any] = {
     val entries = multimap.getEntriesList.asScala.map(entry ⇒
       entry.getKey -> orsetFromProto(entry.getValue)).toMap
-    ORMultiMap(ORMap(
+    new ORMultiMap(new ORMap(
       keys = orsetFromProto(multimap.getKeys).asInstanceOf[ORSet[String]],
       entries))
   }
