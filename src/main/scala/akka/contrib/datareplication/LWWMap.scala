@@ -27,7 +27,7 @@ object LWWMap {
  * `LWWRegister` relies on synchronized clocks and should only be used when the choice of
  * value is not important for concurrent updates occurring within the clock skew.
  *
- * Instead of using timestamps based on ´System.currentTimeMillis()` time it is possible to
+ * Instead of using timestamps based on `System.currentTimeMillis()` time it is possible to
  * use a timestamp value based on something else, for example an increasing version number
  * from a database record that is used for optimistic concurrency control.
  *
