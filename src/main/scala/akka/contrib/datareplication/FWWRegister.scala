@@ -7,11 +7,11 @@ import akka.cluster.Cluster
 import akka.cluster.UniqueAddress
 import akka.util.HashCode
 
-object LWWRegister {
+object FWWRegister {
 
   abstract class Clock {
     /**
-     * @param currentTimestamp the current `timestamp` value of the `LWWRegister`
+     * @param currentTimestamp the current `timestamp` value of the `FWWRegister`
      */
     def nextTimestamp(currentTimestamp: Long): Long
   }
@@ -32,36 +32,36 @@ object LWWRegister {
   /**
    * INTERNAL API
    */
-  private[akka] def apply[A](node: UniqueAddress, initialValue: A, clock: Clock): LWWRegister[A] =
-    new LWWRegister(node, initialValue, clock.nextTimestamp(0L))
+  private[akka] def apply[A](node: UniqueAddress, initialValue: A, clock: Clock): FWWRegister[A] =
+    new FWWRegister(node, initialValue, clock.nextTimestamp(0L))
 
-  def apply[A](node: Cluster, initialValue: A, clock: Clock = defaultClock): LWWRegister[A] =
+  def apply[A](node: Cluster, initialValue: A, clock: Clock = defaultClock): FWWRegister[A] =
     apply(node.selfUniqueAddress, initialValue, clock)
 
   /**
    * Java API
    */
-  def create[A](node: Cluster, initialValue: A): LWWRegister[A] =
+  def create[A](node: Cluster, initialValue: A): FWWRegister[A] =
     apply(node, initialValue)
 
   /**
    * Java API
    */
-  def create[A](node: Cluster, initialValue: A, clock: Clock): LWWRegister[A] =
+  def create[A](node: Cluster, initialValue: A, clock: Clock): FWWRegister[A] =
     apply(node, initialValue, clock)
 
   /**
-   * Extract the [[LWWRegister#value]].
+   * Extract the [[FWWRegister#value]].
    */
-  def unapply[A](c: LWWRegister[A]): Option[A] = Some(c.value)
+  def unapply[A](c: FWWRegister[A]): Option[A] = Some(c.value)
 
 }
 
 /**
- * Implements a 'Last Writer Wins Register' CRDT, also called a 'LWW-Register'.
+ * Implements a 'Last Writer Wins Register' CRDT, also called a 'FWW-Register'.
  *
  * Merge takes the the register with highest timestamp. Note that this
- * relies on synchronized clocks. `LWWRegister` should only be used when the choice of
+ * relies on synchronized clocks. `FWWRegister` should only be used when the choice of
  * value is not important for concurrent updates occurring within the clock skew.
  *
  * Merge takes the register updated by the node with lowest address (`UniqueAddress` is ordered)
@@ -74,14 +74,14 @@ object LWWRegister {
  * This class is immutable, i.e. "modifying" methods return a new instance.
  */
 @SerialVersionUID(1L)
-final class LWWRegister[A] private[akka] (
+final class FWWRegister[A] private[akka] (
   private[akka] val node: UniqueAddress,
   val value: A,
   val timestamp: Long)
   extends ReplicatedData with ReplicatedDataSerialization {
-  import LWWRegister.{ Clock, defaultClock }
+  import FWWRegister.{ Clock, defaultClock }
 
-  type T = LWWRegister[A]
+  type T = FWWRegister[A]
 
   /**
    * Java API
@@ -91,7 +91,7 @@ final class LWWRegister[A] private[akka] (
   /**
    * Change the value of the register.
    */
-  def withValue(node: Cluster, value: A): LWWRegister[A] =
+  def withValue(node: Cluster, value: A): FWWRegister[A] =
     withValue(node, value, defaultClock)
 
   /**
@@ -102,7 +102,7 @@ final class LWWRegister[A] private[akka] (
    * increasing version number from a database record that is used for optimistic
    * concurrency control.
    */
-  def withValue(node: Cluster, value: A, clock: Clock): LWWRegister[A] =
+  def withValue(node: Cluster, value: A, clock: Clock): FWWRegister[A] =
     withValue(node.selfUniqueAddress, value, clock)
 
   /**
@@ -113,21 +113,21 @@ final class LWWRegister[A] private[akka] (
   /**
    * INTERNAL API
    */
-  private[akka] def withValue(node: UniqueAddress, value: A, clock: Clock): LWWRegister[A] =
-    new LWWRegister(node, value, clock.nextTimestamp(timestamp))
+  private[akka] def withValue(node: UniqueAddress, value: A, clock: Clock): FWWRegister[A] =
+    new FWWRegister(node, value, clock.nextTimestamp(timestamp))
 
-  override def merge(that: LWWRegister[A]): LWWRegister[A] =
-    if (that.timestamp > this.timestamp) that
-    else if (that.timestamp < this.timestamp) this
+  override def merge(that: FWWRegister[A]): FWWRegister[A] =
+    if (that.timestamp < this.timestamp) that
+    else if (that.timestamp > this.timestamp) this
     else if (that.node < this.node) that
     else this
 
   // this class cannot be a `case class` because we need different `unapply`
 
-  override def toString: String = s"LWWRegister($value)"
+  override def toString: String = s"FWWRegister($value)"
 
   override def equals(o: Any): Boolean = o match {
-    case other: LWWRegister[_] =>
+    case other: FWWRegister[_] =>
       timestamp == other.timestamp && value == other.value && node == other.node
     case _ => false
   }
