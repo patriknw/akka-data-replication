@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.contrib.datareplication
 
@@ -67,7 +67,7 @@ object LWWRegister {
  * Merge takes the register updated by the node with lowest address (`UniqueAddress` is ordered)
  * if the timestamps are exactly the same.
  *
- * Instead of using timestamps based on ´System.currentTimeMillis()` time it is possible to
+ * Instead of using timestamps based on `System.currentTimeMillis()` time it is possible to
  * use a timestamp value based on something else, for example an increasing version number
  * from a database record that is used for optimistic concurrency control.
  *
@@ -98,7 +98,7 @@ final class LWWRegister[A] private[akka] (
    * Change the value of the register.
    *
    * You can provide your `clock` implementation instead of using timestamps based
-   * on ´System.currentTimeMillis()` time. The timestamp can for example be an
+   * on `System.currentTimeMillis()` time. The timestamp can for example be an
    * increasing version number from a database record that is used for optimistic
    * concurrency control.
    */

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.contrib.datareplication
 
@@ -63,7 +63,7 @@ final class LWWMap[A] private[akka] (
    * Adds an entry to the map.
    *
    * You can provide your `clock` implementation instead of using timestamps based
-   * on ´System.currentTimeMillis()` time. The timestamp can for example be an
+   * on `System.currentTimeMillis()` time. The timestamp can for example be an
    * increasing version number from a database record that is used for optimistic
    * concurrency control.
    */
