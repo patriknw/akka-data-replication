@@ -421,6 +421,12 @@ object Replicator {
 
       import PruningState._
 
+      def needPruningFrom(removedNode: UniqueAddress): Boolean =
+        data match {
+          case r: RemovedNodePruning => r.needPruningFrom(removedNode)
+          case _                     => false
+        }
+
       def initRemovedNodePruning(removed: UniqueAddress, owner: UniqueAddress): DataEnvelope = {
         copy(pruning = pruning.updated(removed, PruningState(owner, PruningInitialized(Set.empty))))
       }
@@ -482,7 +488,7 @@ object Replicator {
       override def merge(that: ReplicatedData): ReplicatedData = DeletedData
     }
 
-    final case class Status(digests: Map[String, Digest]) extends ReplicatorMessage {
+    final case class Status(digests: Map[String, Digest], chunk: Int, totChunks: Int) extends ReplicatorMessage {
       override def toString: String =
         (digests.map {
           case (key, bytes) => key + " -> " + bytes.map(byte => f"$byte%02x").mkString("")
@@ -705,6 +711,9 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
   var dataEntries = Map.empty[String, (DataEnvelope, Digest)]
   var changed = Map.empty[String, Digest]
 
+  var statusCount = 0L
+  var statusTotChunks = 0
+
   val subscribers = new mutable.HashMap[String, mutable.Set[ActorRef]] with mutable.MultiMap[String, ActorRef]
   val newSubscribers = new mutable.HashMap[String, mutable.Set[ActorRef]] with mutable.MultiMap[String, ActorRef]
 
@@ -737,7 +746,7 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
     case NotifySubscribersTick                      ⇒ receiveNotifySubscribersTick()
     case GossipTick                                 ⇒ receiveGossipTick()
     case ClockTick                                  ⇒ receiveClockTick()
-    case Status(otherDigests)                       ⇒ receiveStatus(otherDigests)
+    case Status(otherDigests, chunk, totChunks)     ⇒ receiveStatus(otherDigests, chunk, totChunks)
     case Gossip(updatedData, sendBack)              ⇒ receiveGossip(updatedData, sendBack)
     case Subscribe(key, subscriber)                 ⇒ receiveSubscribe(key, subscriber)
     case Unsubscribe(key, subscriber)               ⇒ receiveUnsubscribe(key, subscriber)
@@ -947,15 +956,13 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
   }
 
   def setData(key: String, envelope: DataEnvelope): Unit = {
-    val dig = if (envelope.data == DeletedData) DeletedDigest else LazyDigest
-
     // notify subscribers, later
     if (subscribers.contains(key) && !changed.contains(key)) {
-      val newDigest = if (envelope.data == DeletedData) DeletedDigest else ByteString.fromArray(MessageDigest.getInstance("SHA-1").digest(serializer.toBinary(envelope)))
       val oldDigest = getDigest(key)
       changed = changed.updated(key, oldDigest)
     }
 
+    val dig = if (envelope.data == DeletedData) DeletedDigest else LazyDigest
     dataEntries = dataEntries.updated(key, (envelope, dig))
   }
 
@@ -1006,8 +1013,28 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
 
   def receiveGossipTick(): Unit = selectRandomNode(nodes.toVector) foreach gossipTo
 
-  def gossipTo(address: Address): Unit =
-    replica(address) ! Status(dataEntries.map { case (key, (_, _)) ⇒ (key, getDigest(key)) })
+  def gossipTo(address: Address): Unit = {
+    val to = replica(address)
+    if (dataEntries.size <= maxDeltaElements) {
+      val status = Status(dataEntries.map { case (key, (_, _)) ⇒ (key, getDigest(key)) }, chunk = 0, totChunks = 1)
+      to ! status
+    } else {
+      val totChunks = dataEntries.size / maxDeltaElements
+      for (_ <- 1 to math.min(totChunks, 10)) {
+        if (totChunks == statusTotChunks)
+          statusCount += 1
+        else {
+          statusCount = ThreadLocalRandom.current.nextInt(0, totChunks)
+          statusTotChunks = totChunks
+        }
+        val chunk = (statusCount % totChunks).toInt
+        val status = Status(dataEntries.collect {
+          case (key, (_, _)) if math.abs(key.hashCode) % totChunks == chunk ⇒ (key, getDigest(key))
+        }, chunk, totChunks)
+        to ! status
+      }
+    }
+  }
 
   def selectRandomNode(addresses: immutable.IndexedSeq[Address]): Option[Address] =
     if (addresses.isEmpty) None else Some(addresses(ThreadLocalRandom.current nextInt addresses.size))
@@ -1015,10 +1042,10 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
   def replica(address: Address): ActorSelection =
     context.actorSelection(self.path.toStringWithAddress(address))
 
-  def receiveStatus(otherDigests: Map[String, Digest]): Unit = {
+  def receiveStatus(otherDigests: Map[String, Digest], chunk: Int, totChunks: Int): Unit = {
     if (log.isDebugEnabled)
-      log.debug("Received gossip status from [{}], containing [{}]", sender().path.address,
-        otherDigests.keys.mkString(", "))
+      log.debug("Received gossip status from [{}], chunk [{}] of [{}] containing [{}]", sender().path.address,
+        chunk, totChunks, otherDigests.keys.mkString(", "))
 
     def isOtherDifferent(key: String, otherDigest: Digest): Boolean = {
       val d = getDigest(key)
@@ -1027,13 +1054,24 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
     val otherDifferentKeys = otherDigests.collect {
       case (key, otherDigest) if isOtherDifferent(key, otherDigest) ⇒ key
     }
-    val otherMissingKeys = dataEntries.keySet -- otherDigests.keySet
-    val keys = (otherMissingKeys ++ otherDifferentKeys).take(maxDeltaElements)
+    val otherKeys = otherDigests.keySet
+    val myKeys =
+      if (totChunks == 1) dataEntries.keySet
+      else dataEntries.keysIterator.filter(_.hashCode % totChunks == chunk).toSet
+    val otherMissingKeys = myKeys -- otherKeys
+    val keys = (otherDifferentKeys ++ otherMissingKeys).take(maxDeltaElements)
     if (keys.nonEmpty) {
       if (log.isDebugEnabled)
         log.debug("Sending gossip to [{}], containing [{}]", sender().path.address, keys.mkString(", "))
       val g = Gossip(keys.map(k ⇒ k -> getData(k).get)(collection.breakOut), sendBack = otherDifferentKeys.nonEmpty)
       sender() ! g
+    }
+    val myMissingKeys = otherKeys -- myKeys
+    if (myMissingKeys.nonEmpty) {
+      if (log.isDebugEnabled)
+        log.debug("Sending gossip status to [{}], requesting missing [{}]", sender().path.address, myMissingKeys.mkString(", "))
+      val status = Status(myMissingKeys.map(k ⇒ k -> NotFoundDigest)(collection.breakOut), chunk, totChunks)
+      sender() ! status
     }
   }
 
@@ -1043,13 +1081,16 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
     var replyData = Map.empty[String, DataEnvelope]
     updatedData.foreach {
       case (key, envelope) ⇒
+        val hadData = dataEntries.contains(key)
         write(key, envelope)
         if (sendBack) getData(key) match {
-          case Some(d) => replyData = replyData.updated(key, d)
-          case None    =>
+          case Some(d) =>
+            if (hadData || d.pruning.nonEmpty)
+              replyData = replyData.updated(key, d)
+          case None =>
         }
     }
-    if (sendBack)
+    if (sendBack && replyData.nonEmpty)
       sender() ! Gossip(replyData, sendBack = false)
   }
 
@@ -1120,22 +1161,27 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
       case (r, t) if ((allReachableClockTime - t) > maxPruningDisseminationNanos) ⇒ r
     }(collection.breakOut)
 
-    for ((key, (envelope, _)) ← dataEntries; removed ← removedSet) {
+    if (removedSet.nonEmpty) {
+      for ((key, (envelope, _)) ← dataEntries; removed ← removedSet) {
 
-      def init(): Unit = {
-        val newEnvelope = envelope.initRemovedNodePruning(removed, selfUniqueAddress)
-        log.debug("Initiated pruning of [{}] for data key [{}]", removed, key)
-        setData(key, newEnvelope)
-      }
+        def init(): Unit = {
+          val newEnvelope = envelope.initRemovedNodePruning(removed, selfUniqueAddress)
+          log.debug("Initiated pruning of [{}] for data key [{}]", removed, key)
+          setData(key, newEnvelope)
+        }
 
-      envelope.data match {
-        case dataWithRemovedNodePruning: RemovedNodePruning ⇒
-          envelope.pruning.get(removed) match {
-            case None ⇒ init()
-            case Some(PruningState(owner, PruningInitialized(_))) if owner != selfUniqueAddress ⇒ init()
-            case _ ⇒ // already in progress
+        if (envelope.needPruningFrom(removed)) {
+          envelope.data match {
+            case dataWithRemovedNodePruning: RemovedNodePruning ⇒
+
+              envelope.pruning.get(removed) match {
+                case None ⇒ init()
+                case Some(PruningState(owner, PruningInitialized(_))) if owner != selfUniqueAddress ⇒ init()
+                case _ ⇒ // already in progress
+              }
+            case _ ⇒
           }
-        case _ ⇒
+        }
       }
     }
   }

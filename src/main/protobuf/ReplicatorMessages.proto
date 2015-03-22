@@ -80,7 +80,9 @@ message Status {
     required bytes digest = 2;
   }
   
-  repeated Entry entries = 1;
+  required uint32 chunk = 1;
+  required uint32 totChunks = 2;
+  repeated Entry entries = 3;
 }
 
 message Gossip {
