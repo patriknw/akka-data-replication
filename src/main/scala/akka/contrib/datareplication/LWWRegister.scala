@@ -30,6 +30,15 @@ object LWWRegister {
   }
 
   /**
+   * This [[Clock]] can be used for first-write-wins semantics. It is using min value of
+   * `-System.currentTimeMillis()` and `currentTimestamp + 1`, i.e. it is counting backwards.
+   */
+  val reverseClock = new Clock {
+    override def nextTimestamp(currentTimestamp: Long): Long =
+      math.min(-System.currentTimeMillis(), currentTimestamp - 1)
+  }
+
+  /**
    * INTERNAL API
    */
   private[akka] def apply[A](node: UniqueAddress, initialValue: A, clock: Clock): LWWRegister[A] =
@@ -70,6 +79,9 @@ object LWWRegister {
  * Instead of using timestamps based on ´System.currentTimeMillis()` time it is possible to
  * use a timestamp value based on something else, for example an increasing version number
  * from a database record that is used for optimistic concurrency control.
+ *
+ * For first-write-wins semantics you can use the [[LWWRegister#reverseClock]] instead of the
+ * [[LWWRegister#defaultClock]]
  *
  * This class is immutable, i.e. "modifying" methods return a new instance.
  */
