@@ -164,6 +164,10 @@ object Replicator {
    * when the value of the given `key` is changed. Current value is also
    * sent as a [[Changed]] message to a new subscriber.
    *
+   * Subscribers will be notified periodically with the configured `notify-subscribers-interval`,
+   * and it is also possible to send an explicit [[FlushChanges]] message to
+   * the `Replicator` to notify the subscribers immediately.
+   *
    * The subscriber will automatically be unregistered if it is terminated.
    *
    * If the key is deleted the subscriber is notified with a [[DataDeleted]]
@@ -384,6 +388,17 @@ object Replicator {
   final case class ReplicaCount(n: Int)
 
   /**
+   * Notify subscribers of changes now, otherwise they will be notified periodically
+   * with the configured `notify-subscribers-interval`.
+   */
+  case object FlushChanges
+
+  /**
+   * Java API: The [[FlushChanges]] instance
+   */
+  def flushChangesInstance = FlushChanges
+
+  /**
    * Marker trait for remote messages serialized by
    * [[akka.contrib.datareplication.protobuf.ReplicatorMessageSerializer]].
    */
@@ -395,7 +410,6 @@ object Replicator {
   private[akka] object Internal {
 
     case object GossipTick
-    case object NotifySubscribersTick
     case object RemovedNodePruningTick
     case object ClockTick
     final case class Write(key: String, envelope: DataEnvelope) extends ReplicatorMessage
@@ -617,9 +631,13 @@ object Replicator {
  *
  * You may also register interest in change notifications by sending [[Replicator.Subscribe]]
  * message to the `Replicator`. It will send [[Replicator.Changed]] messages to the registered
- * subscriber when the data for the subscribed key is updated. The subscriber is automatically
- * removed if the subscriber is terminated. A subscriber can also be deregistered with the
- * [[Replicator.Unsubscribe]] message.
+ * subscriber when the data for the subscribed key is updated. Subscribers will be notified
+ * periodically with the configured `notify-subscribers-interval`, and it is also possible to
+ * send an explicit [[Replicator.FlushChanges]] message to the `Replicator` to notify the subscribers
+ * immediately.
+ *
+ * The subscriber is automatically removed if the subscriber is terminated. A subscriber can
+ * also be deregistered with the [[Replicator.Unsubscribe]] message.
  *
  * == Delete ==
  *
@@ -684,7 +702,7 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
   //Start periodic gossip to random nodes in cluster
   import context.dispatcher
   val gossipTask = context.system.scheduler.schedule(gossipInterval, gossipInterval, self, GossipTick)
-  val notifyTask = context.system.scheduler.schedule(notifySubscribersInterval, notifySubscribersInterval, self, NotifySubscribersTick)
+  val notifyTask = context.system.scheduler.schedule(notifySubscribersInterval, notifySubscribersInterval, self, FlushChanges)
   val pruningTask = context.system.scheduler.schedule(pruningInterval, pruningInterval, self, RemovedNodePruningTick)
   val clockTask = context.system.scheduler.schedule(gossipInterval, gossipInterval, self, ClockTick)
 
@@ -743,7 +761,7 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
     case Read(key)                                  ⇒ receiveRead(key)
     case Write(key, envelope)                       ⇒ receiveWrite(key, envelope)
     case ReadRepair(key, envelope)                  ⇒ receiveReadRepair(key, envelope)
-    case NotifySubscribersTick                      ⇒ receiveNotifySubscribersTick()
+    case FlushChanges                               ⇒ receiveFlushChanges()
     case GossipTick                                 ⇒ receiveGossipTick()
     case ClockTick                                  ⇒ receiveClockTick()
     case Status(otherDigests, chunk, totChunks)     ⇒ receiveStatus(otherDigests, chunk, totChunks)
@@ -984,7 +1002,7 @@ class Replicator(settings: ReplicatorSettings) extends Actor with ActorLogging {
 
   def getData(key: String): Option[DataEnvelope] = dataEntries.get(key).map { case (envelope, _) ⇒ envelope }
 
-  def receiveNotifySubscribersTick(): Unit = {
+  def receiveFlushChanges(): Unit = {
     def notify(key: String, subs: mutable.Set[ActorRef]): Unit = {
       getData(key) match {
         case Some(envelope) =>
