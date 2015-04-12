@@ -17,7 +17,7 @@ object ORMap {
   def create[A <: ReplicatedData](): ORMap[A] = empty[A]
 
   /**
-   * Extract the [[ORMap#elements]].
+   * Extract the [[ORMap#entries]].
    */
   def unapply[A <: ReplicatedData](m: ORMap[A]): Option[Map[String, A]] = Some(m.entries)
 
