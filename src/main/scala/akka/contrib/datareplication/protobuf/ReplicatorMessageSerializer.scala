@@ -51,7 +51,7 @@ class ReplicatorMessageSerializer(val system: ExtendedActorSystem) extends Seria
     case WriteAck        ⇒ dm.Empty.getDefaultInstance.toByteArray
     case m: Read         ⇒ readToProto(m).toByteArray
     case m: ReadResult   ⇒ readResultToProto(m).toByteArray
-    case m: Status       ⇒ compress(statusToProto(m))
+    case m: Status       ⇒ statusToProto(m).toByteArray
     case m: Get          ⇒ getToProto(m).toByteArray
     case m: GetSuccess   ⇒ getSuccessToProto(m).toByteArray
     case m: Changed      ⇒ changedToProto(m).toByteArray
@@ -76,6 +76,7 @@ class ReplicatorMessageSerializer(val system: ExtendedActorSystem) extends Seria
 
   private def statusToProto(status: Status): dm.Status = {
     val b = dm.Status.newBuilder()
+    b.setChunk(status.chunk).setTotChunks(status.totChunks)
     val entries = status.digests.foreach {
       case (key, digest) ⇒
         b.addEntries(dm.Status.Entry.newBuilder().
@@ -86,9 +87,10 @@ class ReplicatorMessageSerializer(val system: ExtendedActorSystem) extends Seria
   }
 
   private def statusFromBinary(bytes: Array[Byte]): Status = {
-    val status = dm.Status.parseFrom(decompress(bytes))
+    val status = dm.Status.parseFrom(bytes)
     Status(status.getEntriesList.asScala.map(e ⇒
-      e.getKey -> AkkaByteString(e.getDigest.toByteArray()))(breakOut))
+      e.getKey -> AkkaByteString(e.getDigest.toByteArray()))(breakOut),
+      status.getChunk, status.getTotChunks)
   }
 
   private def gossipToProto(gossip: Gossip): dm.Gossip = {

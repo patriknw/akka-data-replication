@@ -1,3 +1,6 @@
+/**
+ * Copyright (C) 2015 Typesafe Inc. <http://www.typesafe.com>
+ */
 package akka.contrib.datareplication.sample
 
 import scala.concurrent.duration._

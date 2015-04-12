@@ -9187,27 +9187,47 @@ public final class ReplicatorMessages {
   public interface StatusOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
 
-    // repeated .akka.contrib.datareplication.Status.Entry entries = 1;
+    // required uint32 chunk = 1;
     /**
-     * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+     * <code>required uint32 chunk = 1;</code>
+     */
+    boolean hasChunk();
+    /**
+     * <code>required uint32 chunk = 1;</code>
+     */
+    int getChunk();
+
+    // required uint32 totChunks = 2;
+    /**
+     * <code>required uint32 totChunks = 2;</code>
+     */
+    boolean hasTotChunks();
+    /**
+     * <code>required uint32 totChunks = 2;</code>
+     */
+    int getTotChunks();
+
+    // repeated .akka.contrib.datareplication.Status.Entry entries = 3;
+    /**
+     * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
      */
     java.util.List<akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry> 
         getEntriesList();
     /**
-     * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+     * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
      */
     akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry getEntries(int index);
     /**
-     * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+     * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
      */
     int getEntriesCount();
     /**
-     * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+     * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
      */
     java.util.List<? extends akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.EntryOrBuilder> 
         getEntriesOrBuilderList();
     /**
-     * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+     * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
      */
     akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.EntryOrBuilder getEntriesOrBuilder(
         int index);
@@ -9263,10 +9283,20 @@ public final class ReplicatorMessages {
               }
               break;
             }
-            case 10: {
-              if (!((mutable_bitField0_ & 0x00000001) == 0x00000001)) {
+            case 8: {
+              bitField0_ |= 0x00000001;
+              chunk_ = input.readUInt32();
+              break;
+            }
+            case 16: {
+              bitField0_ |= 0x00000002;
+              totChunks_ = input.readUInt32();
+              break;
+            }
+            case 26: {
+              if (!((mutable_bitField0_ & 0x00000004) == 0x00000004)) {
                 entries_ = new java.util.ArrayList<akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry>();
-                mutable_bitField0_ |= 0x00000001;
+                mutable_bitField0_ |= 0x00000004;
               }
               entries_.add(input.readMessage(akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry.PARSER, extensionRegistry));
               break;
@@ -9279,7 +9309,7 @@ public final class ReplicatorMessages {
         throw new com.google.protobuf.InvalidProtocolBufferException(
             e.getMessage()).setUnfinishedMessage(this);
       } finally {
-        if (((mutable_bitField0_ & 0x00000001) == 0x00000001)) {
+        if (((mutable_bitField0_ & 0x00000004) == 0x00000004)) {
           entries_ = java.util.Collections.unmodifiableList(entries_);
         }
         this.unknownFields = unknownFields.build();
@@ -9884,36 +9914,69 @@ public final class ReplicatorMessages {
       // @@protoc_insertion_point(class_scope:akka.contrib.datareplication.Status.Entry)
     }
 
-    // repeated .akka.contrib.datareplication.Status.Entry entries = 1;
-    public static final int ENTRIES_FIELD_NUMBER = 1;
+    private int bitField0_;
+    // required uint32 chunk = 1;
+    public static final int CHUNK_FIELD_NUMBER = 1;
+    private int chunk_;
+    /**
+     * <code>required uint32 chunk = 1;</code>
+     */
+    public boolean hasChunk() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    /**
+     * <code>required uint32 chunk = 1;</code>
+     */
+    public int getChunk() {
+      return chunk_;
+    }
+
+    // required uint32 totChunks = 2;
+    public static final int TOTCHUNKS_FIELD_NUMBER = 2;
+    private int totChunks_;
+    /**
+     * <code>required uint32 totChunks = 2;</code>
+     */
+    public boolean hasTotChunks() {
+      return ((bitField0_ & 0x00000002) == 0x00000002);
+    }
+    /**
+     * <code>required uint32 totChunks = 2;</code>
+     */
+    public int getTotChunks() {
+      return totChunks_;
+    }
+
+    // repeated .akka.contrib.datareplication.Status.Entry entries = 3;
+    public static final int ENTRIES_FIELD_NUMBER = 3;
     private java.util.List<akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry> entries_;
     /**
-     * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+     * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
      */
     public java.util.List<akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry> getEntriesList() {
       return entries_;
     }
     /**
-     * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+     * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
      */
     public java.util.List<? extends akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.EntryOrBuilder> 
         getEntriesOrBuilderList() {
       return entries_;
     }
     /**
-     * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+     * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
      */
     public int getEntriesCount() {
       return entries_.size();
     }
     /**
-     * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+     * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
      */
     public akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry getEntries(int index) {
       return entries_.get(index);
     }
     /**
-     * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+     * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
      */
     public akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.EntryOrBuilder getEntriesOrBuilder(
         int index) {
@@ -9921,6 +9984,8 @@ public final class ReplicatorMessages {
     }
 
     private void initFields() {
+      chunk_ = 0;
+      totChunks_ = 0;
       entries_ = java.util.Collections.emptyList();
     }
     private byte memoizedIsInitialized = -1;
@@ -9928,6 +9993,14 @@ public final class ReplicatorMessages {
       byte isInitialized = memoizedIsInitialized;
       if (isInitialized != -1) return isInitialized == 1;
 
+      if (!hasChunk()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
+      if (!hasTotChunks()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
       for (int i = 0; i < getEntriesCount(); i++) {
         if (!getEntries(i).isInitialized()) {
           memoizedIsInitialized = 0;
@@ -9941,8 +10014,14 @@ public final class ReplicatorMessages {
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
       getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeUInt32(1, chunk_);
+      }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        output.writeUInt32(2, totChunks_);
+      }
       for (int i = 0; i < entries_.size(); i++) {
-        output.writeMessage(1, entries_.get(i));
+        output.writeMessage(3, entries_.get(i));
       }
       getUnknownFields().writeTo(output);
     }
@@ -9953,9 +10032,17 @@ public final class ReplicatorMessages {
       if (size != -1) return size;
 
       size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt32Size(1, chunk_);
+      }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt32Size(2, totChunks_);
+      }
       for (int i = 0; i < entries_.size(); i++) {
         size += com.google.protobuf.CodedOutputStream
-          .computeMessageSize(1, entries_.get(i));
+          .computeMessageSize(3, entries_.get(i));
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -10074,9 +10161,13 @@ public final class ReplicatorMessages {
 
       public Builder clear() {
         super.clear();
+        chunk_ = 0;
+        bitField0_ = (bitField0_ & ~0x00000001);
+        totChunks_ = 0;
+        bitField0_ = (bitField0_ & ~0x00000002);
         if (entriesBuilder_ == null) {
           entries_ = java.util.Collections.emptyList();
-          bitField0_ = (bitField0_ & ~0x00000001);
+          bitField0_ = (bitField0_ & ~0x00000004);
         } else {
           entriesBuilder_.clear();
         }
@@ -10107,15 +10198,25 @@ public final class ReplicatorMessages {
       public akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status buildPartial() {
         akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status result = new akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status(this);
         int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.chunk_ = chunk_;
+        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
+          to_bitField0_ |= 0x00000002;
+        }
+        result.totChunks_ = totChunks_;
         if (entriesBuilder_ == null) {
-          if (((bitField0_ & 0x00000001) == 0x00000001)) {
+          if (((bitField0_ & 0x00000004) == 0x00000004)) {
             entries_ = java.util.Collections.unmodifiableList(entries_);
-            bitField0_ = (bitField0_ & ~0x00000001);
+            bitField0_ = (bitField0_ & ~0x00000004);
           }
           result.entries_ = entries_;
         } else {
           result.entries_ = entriesBuilder_.build();
         }
+        result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
       }
@@ -10131,11 +10232,17 @@ public final class ReplicatorMessages {
 
       public Builder mergeFrom(akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status other) {
         if (other == akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.getDefaultInstance()) return this;
+        if (other.hasChunk()) {
+          setChunk(other.getChunk());
+        }
+        if (other.hasTotChunks()) {
+          setTotChunks(other.getTotChunks());
+        }
         if (entriesBuilder_ == null) {
           if (!other.entries_.isEmpty()) {
             if (entries_.isEmpty()) {
               entries_ = other.entries_;
-              bitField0_ = (bitField0_ & ~0x00000001);
+              bitField0_ = (bitField0_ & ~0x00000004);
             } else {
               ensureEntriesIsMutable();
               entries_.addAll(other.entries_);
@@ -10148,7 +10255,7 @@ public final class ReplicatorMessages {
               entriesBuilder_.dispose();
               entriesBuilder_ = null;
               entries_ = other.entries_;
-              bitField0_ = (bitField0_ & ~0x00000001);
+              bitField0_ = (bitField0_ & ~0x00000004);
               entriesBuilder_ = 
                 com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders ?
                    getEntriesFieldBuilder() : null;
@@ -10162,6 +10269,14 @@ public final class ReplicatorMessages {
       }
 
       public final boolean isInitialized() {
+        if (!hasChunk()) {
+          
+          return false;
+        }
+        if (!hasTotChunks()) {
+          
+          return false;
+        }
         for (int i = 0; i < getEntriesCount(); i++) {
           if (!getEntries(i).isInitialized()) {
             
@@ -10190,13 +10305,79 @@ public final class ReplicatorMessages {
       }
       private int bitField0_;
 
-      // repeated .akka.contrib.datareplication.Status.Entry entries = 1;
+      // required uint32 chunk = 1;
+      private int chunk_ ;
+      /**
+       * <code>required uint32 chunk = 1;</code>
+       */
+      public boolean hasChunk() {
+        return ((bitField0_ & 0x00000001) == 0x00000001);
+      }
+      /**
+       * <code>required uint32 chunk = 1;</code>
+       */
+      public int getChunk() {
+        return chunk_;
+      }
+      /**
+       * <code>required uint32 chunk = 1;</code>
+       */
+      public Builder setChunk(int value) {
+        bitField0_ |= 0x00000001;
+        chunk_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required uint32 chunk = 1;</code>
+       */
+      public Builder clearChunk() {
+        bitField0_ = (bitField0_ & ~0x00000001);
+        chunk_ = 0;
+        onChanged();
+        return this;
+      }
+
+      // required uint32 totChunks = 2;
+      private int totChunks_ ;
+      /**
+       * <code>required uint32 totChunks = 2;</code>
+       */
+      public boolean hasTotChunks() {
+        return ((bitField0_ & 0x00000002) == 0x00000002);
+      }
+      /**
+       * <code>required uint32 totChunks = 2;</code>
+       */
+      public int getTotChunks() {
+        return totChunks_;
+      }
+      /**
+       * <code>required uint32 totChunks = 2;</code>
+       */
+      public Builder setTotChunks(int value) {
+        bitField0_ |= 0x00000002;
+        totChunks_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required uint32 totChunks = 2;</code>
+       */
+      public Builder clearTotChunks() {
+        bitField0_ = (bitField0_ & ~0x00000002);
+        totChunks_ = 0;
+        onChanged();
+        return this;
+      }
+
+      // repeated .akka.contrib.datareplication.Status.Entry entries = 3;
       private java.util.List<akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry> entries_ =
         java.util.Collections.emptyList();
       private void ensureEntriesIsMutable() {
-        if (!((bitField0_ & 0x00000001) == 0x00000001)) {
+        if (!((bitField0_ & 0x00000004) == 0x00000004)) {
           entries_ = new java.util.ArrayList<akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry>(entries_);
-          bitField0_ |= 0x00000001;
+          bitField0_ |= 0x00000004;
          }
       }
 
@@ -10204,7 +10385,7 @@ public final class ReplicatorMessages {
           akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry, akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry.Builder, akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.EntryOrBuilder> entriesBuilder_;
 
       /**
-       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
        */
       public java.util.List<akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry> getEntriesList() {
         if (entriesBuilder_ == null) {
@@ -10214,7 +10395,7 @@ public final class ReplicatorMessages {
         }
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
        */
       public int getEntriesCount() {
         if (entriesBuilder_ == null) {
@@ -10224,7 +10405,7 @@ public final class ReplicatorMessages {
         }
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
        */
       public akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry getEntries(int index) {
         if (entriesBuilder_ == null) {
@@ -10234,7 +10415,7 @@ public final class ReplicatorMessages {
         }
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
        */
       public Builder setEntries(
           int index, akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry value) {
@@ -10251,7 +10432,7 @@ public final class ReplicatorMessages {
         return this;
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
        */
       public Builder setEntries(
           int index, akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry.Builder builderForValue) {
@@ -10265,7 +10446,7 @@ public final class ReplicatorMessages {
         return this;
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
        */
       public Builder addEntries(akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry value) {
         if (entriesBuilder_ == null) {
@@ -10281,7 +10462,7 @@ public final class ReplicatorMessages {
         return this;
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
        */
       public Builder addEntries(
           int index, akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry value) {
@@ -10298,7 +10479,7 @@ public final class ReplicatorMessages {
         return this;
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
        */
       public Builder addEntries(
           akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry.Builder builderForValue) {
@@ -10312,7 +10493,7 @@ public final class ReplicatorMessages {
         return this;
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
        */
       public Builder addEntries(
           int index, akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry.Builder builderForValue) {
@@ -10326,7 +10507,7 @@ public final class ReplicatorMessages {
         return this;
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
        */
       public Builder addAllEntries(
           java.lang.Iterable<? extends akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry> values) {
@@ -10340,12 +10521,12 @@ public final class ReplicatorMessages {
         return this;
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
        */
       public Builder clearEntries() {
         if (entriesBuilder_ == null) {
           entries_ = java.util.Collections.emptyList();
-          bitField0_ = (bitField0_ & ~0x00000001);
+          bitField0_ = (bitField0_ & ~0x00000004);
           onChanged();
         } else {
           entriesBuilder_.clear();
@@ -10353,7 +10534,7 @@ public final class ReplicatorMessages {
         return this;
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
        */
       public Builder removeEntries(int index) {
         if (entriesBuilder_ == null) {
@@ -10366,14 +10547,14 @@ public final class ReplicatorMessages {
         return this;
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
        */
       public akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry.Builder getEntriesBuilder(
           int index) {
         return getEntriesFieldBuilder().getBuilder(index);
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
        */
       public akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.EntryOrBuilder getEntriesOrBuilder(
           int index) {
@@ -10383,7 +10564,7 @@ public final class ReplicatorMessages {
         }
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
        */
       public java.util.List<? extends akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.EntryOrBuilder> 
            getEntriesOrBuilderList() {
@@ -10394,14 +10575,14 @@ public final class ReplicatorMessages {
         }
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
        */
       public akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry.Builder addEntriesBuilder() {
         return getEntriesFieldBuilder().addBuilder(
             akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry.getDefaultInstance());
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
        */
       public akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry.Builder addEntriesBuilder(
           int index) {
@@ -10409,7 +10590,7 @@ public final class ReplicatorMessages {
             index, akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry.getDefaultInstance());
       }
       /**
-       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 1;</code>
+       * <code>repeated .akka.contrib.datareplication.Status.Entry entries = 3;</code>
        */
       public java.util.List<akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry.Builder> 
            getEntriesBuilderList() {
@@ -10422,7 +10603,7 @@ public final class ReplicatorMessages {
           entriesBuilder_ = new com.google.protobuf.RepeatedFieldBuilder<
               akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry, akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.Entry.Builder, akka.contrib.datareplication.protobuf.msg.ReplicatorMessages.Status.EntryOrBuilder>(
                   entries_,
-                  ((bitField0_ & 0x00000001) == 0x00000001),
+                  ((bitField0_ & 0x00000004) == 0x00000004),
                   getParentForChildren(),
                   isClean());
           entries_ = null;
@@ -14307,22 +14488,22 @@ public final class ReplicatorMessages {
       "ess\022A\n\014ownerAddress\030\002 \002(\0132+.akka.contrib" +
       ".datareplication.UniqueAddress\022\021\n\tperfor" +
       "med\030\003 \002(\010\0223\n\004seen\030\004 \003(\0132%.akka.contrib.d",
-      "atareplication.Address\"k\n\006Status\022;\n\007entr" +
-      "ies\030\001 \003(\0132*.akka.contrib.datareplication" +
-      ".Status.Entry\032$\n\005Entry\022\013\n\003key\030\001 \002(\t\022\016\n\006d" +
-      "igest\030\002 \002(\014\"\253\001\n\006Gossip\022\020\n\010sendBack\030\001 \002(\010" +
-      "\022;\n\007entries\030\002 \003(\0132*.akka.contrib.datarep" +
-      "lication.Gossip.Entry\032R\n\005Entry\022\013\n\003key\030\001 " +
-      "\002(\t\022<\n\010envelope\030\002 \002(\0132*.akka.contrib.dat" +
-      "areplication.DataEnvelope\"T\n\rUniqueAddre" +
-      "ss\0226\n\007address\030\001 \002(\0132%.akka.contrib.datar" +
-      "eplication.Address\022\013\n\003uid\030\002 \002(\r\")\n\007Addre",
-      "ss\022\020\n\010hostname\030\001 \002(\t\022\014\n\004port\030\002 \002(\r\"V\n\014Ot" +
-      "herMessage\022\027\n\017enclosedMessage\030\001 \002(\014\022\024\n\014s" +
-      "erializerId\030\002 \002(\005\022\027\n\017messageManifest\030\004 \001" +
-      "(\014\"\036\n\nStringGSet\022\020\n\010elements\030\001 \003(\tB-\n)ak" +
-      "ka.contrib.datareplication.protobuf.msgH" +
-      "\001"
+      "atareplication.Address\"\215\001\n\006Status\022\r\n\005chu" +
+      "nk\030\001 \002(\r\022\021\n\ttotChunks\030\002 \002(\r\022;\n\007entries\030\003" +
+      " \003(\0132*.akka.contrib.datareplication.Stat" +
+      "us.Entry\032$\n\005Entry\022\013\n\003key\030\001 \002(\t\022\016\n\006digest" +
+      "\030\002 \002(\014\"\253\001\n\006Gossip\022\020\n\010sendBack\030\001 \002(\010\022;\n\007e" +
+      "ntries\030\002 \003(\0132*.akka.contrib.datareplicat" +
+      "ion.Gossip.Entry\032R\n\005Entry\022\013\n\003key\030\001 \002(\t\022<" +
+      "\n\010envelope\030\002 \002(\0132*.akka.contrib.datarepl" +
+      "ication.DataEnvelope\"T\n\rUniqueAddress\0226\n" +
+      "\007address\030\001 \002(\0132%.akka.contrib.datareplic",
+      "ation.Address\022\013\n\003uid\030\002 \002(\r\")\n\007Address\022\020\n" +
+      "\010hostname\030\001 \002(\t\022\014\n\004port\030\002 \002(\r\"V\n\014OtherMe" +
+      "ssage\022\027\n\017enclosedMessage\030\001 \002(\014\022\024\n\014serial" +
+      "izerId\030\002 \002(\005\022\027\n\017messageManifest\030\004 \001(\014\"\036\n" +
+      "\nStringGSet\022\020\n\010elements\030\001 \003(\tB-\n)akka.co" +
+      "ntrib.datareplication.protobuf.msgH\001"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -14412,7 +14593,7 @@ public final class ReplicatorMessages {
           internal_static_akka_contrib_datareplication_Status_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_akka_contrib_datareplication_Status_descriptor,
-              new java.lang.String[] { "Entries", });
+              new java.lang.String[] { "Chunk", "TotChunks", "Entries", });
           internal_static_akka_contrib_datareplication_Status_Entry_descriptor =
             internal_static_akka_contrib_datareplication_Status_descriptor.getNestedTypes().get(0);
           internal_static_akka_contrib_datareplication_Status_Entry_fieldAccessorTable = new

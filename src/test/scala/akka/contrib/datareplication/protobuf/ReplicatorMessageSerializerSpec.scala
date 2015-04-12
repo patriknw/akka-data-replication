@@ -67,7 +67,7 @@ class ReplicatorMessageSerializerSpec extends TestKit(ActorSystem("ReplicatorMes
       checkSerialization(ReadResult(Some(DataEnvelope(data1))))
       checkSerialization(ReadResult(None))
       checkSerialization(Status(Map("A" -> ByteString.fromString("a"),
-        "B" -> ByteString.fromString("b"))))
+        "B" -> ByteString.fromString("b")), chunk = 3, totChunks = 10))
       checkSerialization(Gossip(Map("A" -> DataEnvelope(data1),
         "B" -> DataEnvelope(GSet() + "b" + "c")), sendBack = true))
     }
