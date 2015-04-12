@@ -31,6 +31,9 @@ object LWWMap {
  * use a timestamp value based on something else, for example an increasing version number
  * from a database record that is used for optimistic concurrency control.
  *
+ * For first-write-wins semantics you can use the [[LWWRegister#reverseClock]] instead of the
+ * [[LWWRegister#defaultClock]]
+ *
  * This class is immutable, i.e. "modifying" methods return a new instance.
  */
 @SerialVersionUID(1L)

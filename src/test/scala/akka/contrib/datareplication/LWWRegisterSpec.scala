@@ -75,5 +75,17 @@ class LWWRegisterSpec extends WordSpec with Matchers {
           value4 should be("a")
       }
     }
+
+    "can be used as first-write-wins-register" in {
+      import LWWRegister.reverseClock
+      val r = (1 to 100).foldLeft(LWWRegister(node1, 0, reverseClock)) {
+        case (r, n) ⇒
+          r.value should be(0)
+          val newRegister = r.merge(r.withValue(node1, n, reverseClock))
+          newRegister should be(r)
+          newRegister
+      }
+      r.value should be(0)
+    }
   }
 }
