@@ -282,7 +282,6 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
       val c31 = expectMsgPF() { case GetSuccess("C", c: GCounter, _) ⇒ c }
       c31.value should be(31)
 
-      val c32 = c31 + 1
       replicator ! Update("C", GCounter(), WriteLocal)(_ + 1)
       expectMsg(UpdateSuccess("C", None))
 
@@ -481,5 +480,32 @@ class ReplicatorSpec extends MultiNodeSpec(ReplicatorSpec) with STMultiNodeSpec 
     enterBarrier("after-8")
   }
 
+  "check that a gossip update and a local update both cause a change event to emit with the merged data" in {
+    val changedProbe = TestProbe()
+
+    runOn(second) {
+      replicator ! Subscribe("H", changedProbe.ref)
+      replicator ! Update("H", ORMap.empty[Flag], writeTwo)(_ + ("a" -> Flag(enabled = false)))
+      changedProbe.expectMsgPF() { case Changed("H", h: ORMap[Flag] @unchecked) ⇒ h.entries } should be(Map("a" -> Flag(enabled = false)))
+    }
+
+    enterBarrier("update-h1")
+
+    runOn(first) {
+      replicator ! Update("H", ORMap.empty[Flag], writeTwo)(_ + ("a" -> Flag(enabled = true)))
+    }
+
+    runOn(second) {
+      replicator ! Update("H", ORMap.empty[Flag], writeTwo)(_ + ("b" -> Flag(enabled = true)))
+      changedProbe.expectMsgPF() {
+        case Changed("H", ORMap(initialEntries)) if initialEntries.size == 1 ⇒
+          changedProbe.expectMsgPF() { case Changed("H", ORMap(entries)) ⇒ entries }
+        case Changed("H", ORMap(entries)) ⇒
+          entries
+      } should be(Map("a" -> Flag(enabled = true), "b" -> Flag(enabled = true)))
+    }
+
+    enterBarrier("after-9")
+  }
 }
 
