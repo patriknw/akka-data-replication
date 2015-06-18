@@ -1,7 +1,38 @@
+Akka Distributed Data
+=====================
+
+This library (akka-data-replication) has been included in Akka, in the module
+[Distributed Data](http://doc.akka.io/docs/akka/snapshot/scala/distributed-data.html).
+
+**It will not be maintained in patriknw/akka-data-replication.** All bug fixes and new features
+will be done in [akka/akka](https://github.com/akka/akka/).
+
+Migration Guide
+---------------
+
+The functionality of akka-distributed-data-experimental 2.4-M2 is very similar to akka-data-replication 0.11.
+Here is a list of the most important changes:
+
+* Dependency 
+  `"com.typesafe.akka" % "akka-distributed-data-experimental_2.11" % 2.4-M2`
+  (or later)
+* The package name changed to `akka.cluster.ddata`
+* The extension was renamed to `DistributedData`
+* The keys changed from strings to classes with unique identifiers and type information of the data values,
+  e.g. `ORSetKey[Int]("set2")`
+* The data value was removed from unapply extractor in `GetSuccess` and `Changed` messages. Instead it
+  is accessed with the `get` method. E.g. `case c @ Changed(DataKey) => val e = c.get(DataKey).elements`.
+  The reason is to utilize the type information from the typed keys.
+* The optional read consistency parameter was removed from the `Update` message. If you need to read from
+  other replicas before performing the update you have to first send a `Get` message and then continue with
+  the ``Update`` when the ``GetSuccess`` is received.
+* `BigInt` is used in `GCounter` and `PNCounter` instead of `Long`
+* Improvements of java api
+
 Akka Data Replication
 =====================
 
-This is an **EARLY PREVIEW** of a library for replication of data in an Akka cluster.
+This was (see above) an **EARLY PREVIEW** of a library for replication of data in an Akka cluster.
 It is a replicated in-memory data store supporting low latency and high availability
 requirements. The data must be so called **Conflict Free Replicated Data Types** (CRDTs), 
 i.e. they provide a monotonic merge function and the state changes always converge.
