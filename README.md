@@ -2,7 +2,7 @@ Akka Distributed Data
 =====================
 
 This library (akka-data-replication) has been included in Akka, in the module
-[Distributed Data](http://doc.akka.io/docs/akka/snapshot/scala/distributed-data.html).
+[Distributed Data](http://doc.akka.io/docs/akka/current/scala/distributed-data.html).
 
 **It will not be maintained in patriknw/akka-data-replication.** All bug fixes and new features
 will be done in [akka/akka](https://github.com/akka/akka/).
@@ -10,11 +10,11 @@ will be done in [akka/akka](https://github.com/akka/akka/).
 Migration Guide
 ---------------
 
-The functionality of akka-distributed-data-experimental 2.4-M2 is very similar to akka-data-replication 0.11.
+The functionality of akka-distributed-data-experimental 2.4.0 is very similar to akka-data-replication 0.11.
 Here is a list of the most important changes:
 
 * Dependency 
-  `"com.typesafe.akka" % "akka-distributed-data-experimental_2.11" % 2.4-M2`
+  `"com.typesafe.akka" % "akka-distributed-data-experimental_2.11" % 2.4.0`
   (or later)
 * The package name changed to `akka.cluster.ddata`
 * The extension was renamed to `DistributedData`
